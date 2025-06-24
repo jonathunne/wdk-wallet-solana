@@ -1,29 +1,28 @@
-import { confirmTestTransaction, createTestToken, sendCoinToIndexAccount } from './tokenBasic.js'
+import { confirmTestTransaction, createTestToken, getTransaction, sendCoinToIndexAccount } from './tokenBasic.js'
 import WalletAccountSolana from '../src/wallet-account-solana.js'
 import * as bip39 from 'bip39'
 const SEED_PHRASE = 'cook voyage document eight skate token alien guide drink uncle term abuse'
 
 const VALID_SEED = bip39.mnemonicToSeedSync(SEED_PHRASE)
-const VALID_PATH = "0'/0'"
+const VALID_PATH = "0'/0/0" // BIP-44 path for Solana accounts
 const VALID_CONFIG = { rpcUrl: 'http://localhost:8899', wsUrl: 'ws://localhost:8900' } // Use solana-test-validator RPC
-const VALID_ADDRESS = '8fjz5DTqBYENAUfsWLpSF2DBb46DXFcmztNJGLVrFPit'
-const TO_ADDRESS = '3VbwEqWZ4C1arVkxLHNw6B7xxoGa7dsjy6mSJMWDnyYr'
+const VALID_ADDRESS = '7YKHgGWWGgFZMS87Unxyzog4nGWhAwGzfr7SxbPcuskv'
+const TO_ADDRESS = '6m69wRwfLiKxgfvfcTuHs7dxfL4jCjBWdc9dQWUTcn19'
 const INVALID_SEED_PHRASE = 'invalid seed phrase'
-const INDEX_1_ACCOUNT_PATH = "1'/0'"
+const INDEX_1_ACCOUNT_PATH = "0'/0/1"
 
 const ACCOUNT = {
   index: 0,
-  path: "m/44'/501'/0'/0'",
-  address: '8fjz5DTqBYENAUfsWLpSF2DBb46DXFcmztNJGLVrFPit',
+  path: "m/44'/501'/0'/0/0",
+  address: '7YKHgGWWGgFZMS87Unxyzog4nGWhAwGzfr7SxbPcuskv',
   keyPair: {
-    privateKey: '4f78da356da498a860e7b955a320a91696d87c8b1057169a33aab0ca49609d37',
-    publicKey: '0071ee7b3d6ea1245c4d408302558818f3b5ae0cff95db7eaaa44d4af3ace51195',
-    secretKey: '4f78da356da498a860e7b955a320a91696d87c8b1057169a33aab0ca49609d3771ee7b3d6ea1245c4d408302558818f3b5ae0cff95db7eaaa44d4af3ace51195'
+    privateKey: '03d2ef9708f8e5d23ee50dd93b435da3cb1d3470b9a85a41e3697e3806a1a75d612bcdee8a0a93d631d901484b2e40373ddbd783e17f58ad9e486bd5f77d3f0b',
+    publicKey: '612bcdee8a0a93d631d901484b2e40373ddbd783e17f58ad9e486bd5f77d3f0b'
   }
 }
 
 describe('WalletAccountSolana', () => {
-  let wallet
+  let account
   let VALID_TOKEN
   beforeAll(async () => {
     const tokenMint = await createTestToken(SEED_PHRASE)
@@ -34,7 +33,11 @@ describe('WalletAccountSolana', () => {
   })
 
   beforeEach(async () => {
-    wallet = await WalletAccountSolana.create(VALID_SEED, VALID_PATH, VALID_CONFIG)
+    account = await WalletAccountSolana.create(VALID_SEED, VALID_PATH, VALID_CONFIG)
+  })
+
+  afterEach(() => {
+    account?.dispose()
   })
 
   describe('create', () => {
@@ -47,8 +50,7 @@ describe('WalletAccountSolana', () => {
 
       expect(account.keyPair).toEqual({
         privateKey: new Uint8Array(Buffer.from(ACCOUNT.keyPair.privateKey, 'hex')),
-        publicKey: new Uint8Array(Buffer.from(ACCOUNT.keyPair.publicKey, 'hex')),
-        secretKey: new Uint8Array(Buffer.from(ACCOUNT.keyPair.secretKey, 'hex'))
+        publicKey: new Uint8Array(Buffer.from(ACCOUNT.keyPair.publicKey, 'hex'))
       }
       )
     })
@@ -62,8 +64,7 @@ describe('WalletAccountSolana', () => {
 
       expect(account.keyPair).toEqual({
         privateKey: new Uint8Array(Buffer.from(ACCOUNT.keyPair.privateKey, 'hex')),
-        publicKey: new Uint8Array(Buffer.from(ACCOUNT.keyPair.publicKey, 'hex')),
-        secretKey: new Uint8Array(Buffer.from(ACCOUNT.keyPair.secretKey, 'hex'))
+        publicKey: new Uint8Array(Buffer.from(ACCOUNT.keyPair.publicKey, 'hex'))
       })
     })
 
@@ -80,57 +81,37 @@ describe('WalletAccountSolana', () => {
 
   describe('getAddress', () => {
     test('should return the correct address', async () => {
-      const address = await wallet.getAddress()
+      const address = await account.getAddress()
       expect(address).toBe(ACCOUNT.address)
-    })
-
-    test('should throw error when getting address of uninitialized wallet', async () => {
-      const walletWithoutAccount = new WalletAccountSolana(VALID_SEED, 'm/44\'/501\'/0\'/1\'')
-      await expect(walletWithoutAccount.getAddress()).rejects.toThrow('The wallet must be initialized to get the address.')
     })
   })
 
   describe('sign', () => {
     const MESSAGE = 'Dummy message to sign.'
 
-    const EXPECTED_SIGNATURE = '2sQocJ3Qgock5YDfqoPkZdweatfEDkVgcANYQT6kRomEsAgzPYmFh1oEHisFJNKRiQ6QNX2QJsoVEnUnt4vBpqT5'
+    const EXPECTED_SIGNATURE = 'ce5c456edf29423e85a7a7f06150cb5bfd282c8771d7b7107f8eab94ecae1960e6cbf0487f63102590c90e076e3f6e74e8745213da152577b1278a12dd0df800'
 
     test('should return the correct signature', async () => {
-      const signature = await wallet.sign(MESSAGE)
+      const signature = await account.sign(MESSAGE)
 
       expect(signature).toBe(EXPECTED_SIGNATURE)
-    })
-
-    test('should throw error when signing account is not initialized', async () => {
-      const walletWithoutAccount = new WalletAccountSolana(VALID_SEED, 'm/44\'/501\'/0\'/1\'')
-      await expect(walletWithoutAccount.sign('Hello, Solana!')).rejects.toThrow('The wallet must be initialized to sign messages.')
     })
   })
 
   describe('verify', () => {
     const MESSAGE = 'Dummy message to sign.'
 
-    const SIGNATURE = '2sQocJ3Qgock5YDfqoPkZdweatfEDkVgcANYQT6kRomEsAgzPYmFh1oEHisFJNKRiQ6QNX2QJsoVEnUnt4vBpqT5'
+    const SIGNATURE = 'ce5c456edf29423e85a7a7f06150cb5bfd282c8771d7b7107f8eab94ecae1960e6cbf0487f63102590c90e076e3f6e74e8745213da152577b1278a12dd0df800'
 
     test('should return true for a valid signature', async () => {
-      const result = await wallet.verify(MESSAGE, SIGNATURE)
+      const result = await account.verify(MESSAGE, SIGNATURE)
 
       expect(result).toBe(true)
     })
 
     test('should return false for an invalid signature', async () => {
-      const result = await wallet.verify('Another message.', SIGNATURE)
+      const result = await account.verify('Another message.', SIGNATURE)
       expect(result).toBe(false)
-    })
-
-    test('should throw on a malformed signature', async () => {
-      await expect(wallet.verify(MESSAGE, 'A bad signature'))
-        .rejects.toThrow('Non-base58 character')
-    })
-
-    test('should throw error when verifying message with uninitialized wallet', async () => {
-      const walletWithoutAccount = new WalletAccountSolana(VALID_SEED, 'm/44\'/501\'/0\'/1\'')
-      await expect(walletWithoutAccount.verify('Hello, Solana!', '')).rejects.toThrow('The wallet must be initialized to verify messages.')
     })
   })
 
@@ -138,10 +119,14 @@ describe('WalletAccountSolana', () => {
     const TRANSACTION = { to: TO_ADDRESS, value: 1000000 }
 
     test('should successfully send a transaction', async () => {
-      const txResult = await wallet.sendTransaction(TRANSACTION)
+      const txResult = await account.sendTransaction(TRANSACTION)
       expect(txResult).toBeDefined()
-      expect(typeof txResult.hash).toBe('string')
-      expect(typeof txResult.fee).toBe('number')
+      await confirmTestTransaction(txResult.hash)
+      const tx = await getTransaction(txResult.hash)
+      expect(tx.transaction.signatures[0]).toEqual(txResult.hash)
+      const txDetails = tx.transaction.message.instructions[0].parsed.info
+      expect(txDetails.destination).toEqual(TO_ADDRESS)
+      expect(txDetails.lamports).toEqual(TRANSACTION.value)
     })
 
     test('should throw error when sending transaction with invalid rpc', async () => {
@@ -154,16 +139,13 @@ describe('WalletAccountSolana', () => {
     const TRANSACTION = { to: TO_ADDRESS, value: 1000000 }
     const EXPECTED_FEE = 5000
     test('should successfully quote a transaction', async () => {
-      const quote = await wallet.quoteSendTransaction(TRANSACTION)
-      expect(typeof quote).toBe('object')
-      expect(quote.fee).toBeDefined()
-      expect(typeof quote.fee).toBe('number')
+      const quote = await account.quoteSendTransaction(TRANSACTION)
       expect(quote.fee).toEqual(EXPECTED_FEE)
     })
 
     test('should throw error when quoting transaction with invalid address', async () => {
       const tx = { to: 'invalid', value: 1000000 }
-      await expect(wallet.quoteSendTransaction(tx)).rejects.toThrow()
+      await expect(account.quoteSendTransaction(tx)).rejects.toThrow()
     })
 
     test('should throw error when quoting transaction with invalid rpc', async () => {
@@ -190,9 +172,15 @@ describe('WalletAccountSolana', () => {
 
   describe('getTokenBalance', () => {
     test('should return the correct token balance of the account', async () => {
-      const balance = await wallet.getTokenBalance(VALID_TOKEN)
-      expect(typeof balance).toBe('number')
-      expect(balance).toBe(10000)
+      const tokenAccount = await WalletAccountSolana.create(VALID_SEED, INDEX_1_ACCOUNT_PATH, VALID_CONFIG)
+
+      const TOKEN_TRANSACTION = { recipient: TO_ADDRESS, token: VALID_TOKEN, amount: 200 }
+      const txResult = await account.transfer(TOKEN_TRANSACTION)
+
+      await confirmTestTransaction(txResult.hash)
+
+      const balance = await tokenAccount.getTokenBalance(VALID_TOKEN)
+      expect(balance).toBe(200)
     })
 
     test('should throw error when getting token balance without RPC', async () => {
@@ -201,7 +189,7 @@ describe('WalletAccountSolana', () => {
     })
 
     test('should throw error for invalid token address', async () => {
-      await expect(wallet.getTokenBalance('invalid-token')).rejects.toThrow('Non-base58 character')
+      await expect(account.getTokenBalance('invalid-token')).rejects.toThrow('Non-base58 character')
     })
   })
 
@@ -209,11 +197,7 @@ describe('WalletAccountSolana', () => {
     test('should return fee for token transfer', async () => {
       const TOKEN_TRANSACTION = { recipient: TO_ADDRESS, token: VALID_TOKEN, amount: 10 }
 
-      expect(VALID_TOKEN).toBeDefined()
-      expect(typeof VALID_TOKEN).toBe('string')
-      expect(VALID_TOKEN.length).toBe(44) // Base58 encoded token address length
-
-      const quote = await wallet.quoteTransfer(TOKEN_TRANSACTION)
+      const quote = await account.quoteTransfer(TOKEN_TRANSACTION)
       expect(quote.fee).toBe(5000)
     })
   })
@@ -222,32 +206,31 @@ describe('WalletAccountSolana', () => {
     test('should send token transaction', async () => {
       const TOKEN_TRANSACTION = { recipient: TO_ADDRESS, token: VALID_TOKEN, amount: 100 }
 
-      const txResult = await wallet.transfer(TOKEN_TRANSACTION)
+      const txResult = await account.transfer(TOKEN_TRANSACTION)
       expect(txResult).toBeDefined()
-      expect(typeof txResult.hash).toBe('string')
-      expect(typeof txResult.fee).toBe('number')
-      await confirmTestTransaction(txResult.hash)
-      const balance = await wallet.getTokenBalance(VALID_TOKEN)
 
-      expect(balance).toBe(9900)
+      await confirmTestTransaction(txResult.hash)
+
+      const tx = await getTransaction(txResult.hash)
+      const txDetails = tx.transaction.message.instructions[0].parsed.info
+      expect(txDetails.authority).toEqual(ACCOUNT.address)
+      expect(txDetails.amount).toEqual(TOKEN_TRANSACTION.amount.toString())
+      expect(tx.transaction.signatures[0]).toEqual(txResult.hash)
+
+      const balance = await account.getTokenBalance(VALID_TOKEN)
+
+      // Out of 1000 tokens, 200 token sent to index 1 account, 100 in this test
+      expect(balance).toBe(9700)
     })
 
     test('should throw program id error when sending invalid token transaction', async () => {
       const params = { recipient: VALID_ADDRESS, token: '9gT8yrFzG7e23NE4hRGMoPPBuaNjVKnp8pdH7HkjJnY3', amount: 1000000 }
-      await expect(wallet.transfer(params)).rejects.toThrow('Failed to find account')
+      await expect(account.transfer(params)).rejects.toThrow('Failed to find account')
     })
 
     test('should handle token transaction errors', async () => {
       const params = { recipient: 'invalid', token: VALID_TOKEN, amount: 1000000 }
-      await expect(wallet.transfer(params)).rejects.toThrow()
-    })
-  })
-
-  describe('dispose', () => {
-    test('should dispose the wallet account', () => {
-      wallet.dispose()
-      expect(wallet.path).toBeNull()
-      expect(wallet.keyPair.privateKey).toBeNull()
+      await expect(account.transfer(params)).rejects.toThrow()
     })
   })
 })

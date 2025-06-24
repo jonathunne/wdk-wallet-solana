@@ -9,12 +9,13 @@ export default class WalletAccountSolana implements IWalletAccount {
      */
     static create(seed: string | Uint8Array, path: string, config?: SolanaWalletConfig): Promise<WalletAccountSolana>;
     /**
-   * Intialise a new solana wallet account.
-   *
-   * @param {string|Uint8Array} seed - The wallet's [BIP-39](https://github.com/bitcoin/bips/blob/master/bip-0039.mediawiki) seed phrase or Uint8Array.
-   * @param {string} path - The BIP-44 derivation path (e.g. "0'/0/0").
-   * @param {SolanaWalletConfig} [config] - The configuration object.
-   */
+     * Creates an new un-initialized solana wallet account.
+     *
+     * @package
+     * @param {string|Uint8Array} seed - The wallet's [BIP-39](https://github.com/bitcoin/bips/blob/master/bip-0039.mediawiki) seed phrase or Uint8Array.
+     * @param {string} path - The BIP-44 derivation path (e.g. "0'/0/0").
+     * @param {SolanaWalletConfig} [config] - The configuration object.
+     */
     constructor(seed: string | Uint8Array, path: string, config?: SolanaWalletConfig);
     /**
      * @private
@@ -41,11 +42,10 @@ export default class WalletAccountSolana implements IWalletAccount {
      * @returns {Promise<void>}
      */
     private _initialize;
-    _secretKeyBuffer: Uint8Array<ArrayBuffer>;
-    _privateKeyBuffer: Uint8Array<any>;
-    _publicKeyBuffer: Uint8Array<any>;
-    _signer: any;
-    _keypair: any;
+    /** @private */
+    private _signer;
+    /** @private */
+    private _keyPair;
     _rpc: any;
     _connection: any;
     _rpcSubscriptions: any;
@@ -64,9 +64,9 @@ export default class WalletAccountSolana implements IWalletAccount {
     /**
      * The account's key pair.
      *
-     * @type {ExtendedKeyPair}
+     * @type {KeyPair}
      */
-    get keyPair(): ExtendedKeyPair;
+    get keyPair(): KeyPair;
     /**
      * Returns the account's address.
      *
@@ -91,7 +91,7 @@ export default class WalletAccountSolana implements IWalletAccount {
     /**
      * Creates a transaction message for sending SOL or quoting fees.
      * @private
-     * @param {Transaction} tx - The transaction details
+     * @param {SolanaTransaction} tx - The transaction details
      * @param {string} version - The transaction message version ('legacy' or 0)
      * @returns {Promise<Object>} The transaction message and instructions
      */
@@ -99,17 +99,17 @@ export default class WalletAccountSolana implements IWalletAccount {
     /**
      * Sends a transaction with arbitrary data.
      *
-     * @param {Transaction} tx - The transaction to send.
+     * @param {SolanaTransaction} tx - The transaction to send.
      * @returns {Promise<TransactionResult>} The transaction's hash.
      */
-    sendTransaction(tx: Transaction): Promise<TransactionResult>;
+    sendTransaction(tx: SolanaTransaction): Promise<TransactionResult>;
     /**
      * Quotes a transaction.
      *
-     * @param {Transaction} tx - The transaction to quote.
+     * @param {SolanaTransaction} tx - The transaction to quote.
      * @returns {Promise<Omit<TransactionResult,'hash'>>} The transaction's quotes.
      */
-    quoteSendTransaction(tx: Transaction): Promise<Omit<TransactionResult, "hash">>;
+    quoteSendTransaction(tx: SolanaTransaction): Promise<Omit<TransactionResult, "hash">>;
     /**
      * Returns the account's native token balance.
      *
@@ -127,7 +127,7 @@ export default class WalletAccountSolana implements IWalletAccount {
      * Creates a transfer transaction.
      * @private
      * @param {TransferOptions} params - The transaction parameters.
-     * @returns {Promise<Transaction>} The transfer transaction.
+     * @returns {Promise<Web3Transaction>} The transfer transaction.
      */
     private _createTransfer;
     /**
@@ -152,10 +152,16 @@ export default class WalletAccountSolana implements IWalletAccount {
 }
 export type IWalletAccount = any;
 export type KeyPair = import("@wdk/wallet").KeyPair;
-export type ExtendedKeyPair = KeyPair & {
-    secretKey: string;
+export type SolanaTransaction = {
+    /**
+     * - The transaction's recipient.
+     */
+    to: string;
+    /**
+     * - The amount of sols to send to the recipient (in lamports).
+     */
+    value: number;
 };
-export type Transaction = import("@wdk/wallet").Transaction;
 export type SolanaWalletConfig = {
     /**
      * - The rpc url of the provider.

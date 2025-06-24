@@ -16,33 +16,15 @@
 
 import { createSolanaRpc } from '@solana/kit'
 import WalletAccountSolana from './wallet-account-solana.js'
-import sodium from 'sodium-universal'
 import AbstractWalletManager from '@wdk/wallet'
 
 const FEE_RATE_NORMAL_MULTIPLIER = 1.1
 const FEE_RATE_FAST_MULTIPLIER = 2.0
-
+const DEFAULT_BASE_FEE = 5000
 /** @typedef {import('./wallet-account-solana.js').SolanaWalletConfig} SolanaWalletConfig */
 /** @typedef {import('@wdk/wallet').FeeRates} FeeRates */
 
 export default class WalletManagerSolana extends AbstractWalletManager {
-  /**
-   * @private
-   */
-  _rpc
-  /**
-   * @private
-   */
-  _rpcUrl
-  /**
-   * @private
-   */
-  _wsUrl
-  /**
-   * @private
-   */
-  _accounts
-
   /**
    * Creates a new wallet manager for solana blockchains.
    *
@@ -52,59 +34,63 @@ export default class WalletManagerSolana extends AbstractWalletManager {
   constructor (seed, config = {}) {
     super(seed, config)
 
-    this._accounts = new Set()
+    /**
+    * The solana wallet configuration.
+    *
+    * @protected
+    * @type {SolanaWalletConfig}
+    */
+    this._config = config
 
-    const { rpcUrl, wsUrl } = config
+    /**
+    * A map between derivation paths and wallet accounts. It contains all the wallet accounts that have been accessed through the {@link getAccount} and {@link getAccountByPath} methods.
+    *
+    * @private
+    * @type {{ [path: string]: WalletAccountSolana }}
+    */
+    this._accounts = {}
 
-    if (rpcUrl) {
-      this._rpcUrl = rpcUrl
-      this._rpc = createSolanaRpc(rpcUrl)
-    }
-
-    if (wsUrl) {
-      this._wsUrl = wsUrl
-    } else if (rpcUrl) {
-      this._wsUrl = rpcUrl.replace('http', 'ws')
-    }
+    /**
+     * The Solana RPC client instance.
+     * @private
+     */
+    this._rpc = createSolanaRpc(this._config.rpcUrl)
   }
 
   /**
    * Returns the wallet account at a specific index (see [BIP-44](https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki)).
    *
    * @example
-   * // Returns the account with derivation path m/44'/501'/1'/0'
+   * // Returns the account with derivation path m/44'/501'/0'/0/1
    * const account = await wallet.getAccount(1);
    * @param {number} [index] - The index of the account to get (default: 0).
    * @returns {Promise<WalletAccountSolana>} The account.
    */
   async getAccount (index = 0) {
-    return await this.getAccountByPath(`${index}'/0'`)
+    return await this.getAccountByPath(`0'/0/${index}`)
   }
 
   /**
    * Returns the wallet account at a specific BIP-44 derivation path.
    *
    * @example
-   * // Returns the account with derivation path m/44'/501'/0'/0'
-   * const account = await wallet.getAccountByPath("/1'/0'"");
-   * @param {string} path - The derivation path (e.g. "/1'/0'").
+   * // Returns the account with derivation path m/44'/501'/0'/0/1
+   * const account = await wallet.getAccountByPath("0'/0/1");
+   * @param {string} path - The derivation path (e.g. "0'/0/0").
    * @returns {Promise<WalletAccountSolana>} The account.
    */
   async getAccountByPath (path) {
-    const account = await WalletAccountSolana.create(this.seed, path, {
-      rpcUrl: this._rpcUrl,
-      wsUrl: this._wsUrl
-    })
-
-    this._accounts.add(account)
-
-    return account
+    if (!this._accounts[path]) {
+      const account = await WalletAccountSolana.create(this.seed, path, this._config)
+      this._accounts[path] = account
+    }
+    return this._accounts[path]
   }
 
   /**
    * Returns the current fee rates.
    *
-   * @returns {Promise<{FeeRates>} The fee rates.
+   * @returns {Promise<{FeeRates>} The fee rates (in lamports).
    */
   async getFeeRates () {
     if (!this._rpc) {
@@ -120,7 +106,7 @@ export default class WalletManagerSolana extends AbstractWalletManager {
     const nonZeroFees = fees.filter(fee => fee.prioritizationFee > 0n)
     const baseFee = nonZeroFees.length > 0
       ? Number(nonZeroFees.reduce((max, fee) => fee.prioritizationFee > max ? fee.prioritizationFee : max, 0n))
-      : 5000
+      : DEFAULT_BASE_FEE
 
     const normalFee = Math.round(baseFee * FEE_RATE_NORMAL_MULTIPLIER)
     const fastFee = Math.round(baseFee * FEE_RATE_FAST_MULTIPLIER)
@@ -135,15 +121,9 @@ export default class WalletManagerSolana extends AbstractWalletManager {
  * Disposes the wallet manager, erasing the seed buffer.
  */
   dispose () {
-    for (const account of this._accounts) account.dispose()
-    this._accounts.clear()
-
-    sodium.sodium_memzero(this._seed)
-
-    this._seed = null
-    this._config = null
-    this._rpc = null
-    this._rpcUrl = null
-    this._wsUrl = null
+    for (const account of Object.values(this._accounts)) {
+      account.dispose()
+    }
+    this._accounts = {}
   }
 }

@@ -9,26 +9,29 @@ export default class WalletManagerSolana {
      */
     constructor(seed: string | Uint8Array, config?: SolanaWalletConfig);
     /**
+    * The solana wallet configuration.
+    *
+    * @protected
+    * @type {SolanaWalletConfig}
+    */
+    protected _config: SolanaWalletConfig;
+    /**
+    * A map between derivation paths and wallet accounts. It contains all the wallet accounts that have been accessed through the {@link getAccount} and {@link getAccountByPath} methods.
+    *
+    * @private
+    * @type {{ [path: string]: WalletAccountSolana }}
+    */
+    private _accounts;
+    /**
+     * The Solana RPC client instance.
      * @private
      */
     private _rpc;
     /**
-     * @private
-     */
-    private _rpcUrl;
-    /**
-     * @private
-     */
-    private _wsUrl;
-    /**
-     * @private
-     */
-    private _accounts;
-    /**
      * Returns the wallet account at a specific index (see [BIP-44](https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki)).
      *
      * @example
-     * // Returns the account with derivation path m/44'/501'/1'/0'
+     * // Returns the account with derivation path m/44'/501'/0'/0/1
      * const account = await wallet.getAccount(1);
      * @param {number} [index] - The index of the account to get (default: 0).
      * @returns {Promise<WalletAccountSolana>} The account.
@@ -38,24 +41,22 @@ export default class WalletManagerSolana {
      * Returns the wallet account at a specific BIP-44 derivation path.
      *
      * @example
-     * // Returns the account with derivation path m/44'/501'/0'/0'
-     * const account = await wallet.getAccountByPath("/1'/0'"");
-     * @param {string} path - The derivation path (e.g. "/1'/0'").
+     * // Returns the account with derivation path m/44'/501'/0'/0/1
+     * const account = await wallet.getAccountByPath("0'/0/1");
+     * @param {string} path - The derivation path (e.g. "0'/0/0").
      * @returns {Promise<WalletAccountSolana>} The account.
      */
     getAccountByPath(path: string): Promise<WalletAccountSolana>;
     /**
      * Returns the current fee rates.
      *
-     * @returns {Promise<{FeeRates>} The fee rates.
+     * @returns {Promise<{FeeRates>} The fee rates (in lamports).
      */
     getFeeRates(): Promise<{}>;
     /**
    * Disposes the wallet manager, erasing the seed buffer.
    */
     dispose(): void;
-    _seed: any;
-    _config: any;
 }
 export type SolanaWalletConfig = import("./wallet-account-solana.js").SolanaWalletConfig;
 export type FeeRates = import("@wdk/wallet").FeeRates;

@@ -7,9 +7,10 @@ import {
   Token,
   TOKEN_PROGRAM_ID
 } from '@solana/spl-token'
-import { HDKey } from 'micro-ed25519-hdkey'
 import * as bip39 from 'bip39'
 import { createKeyPairSignerFromPrivateKeyBytes } from '@solana/kit'
+import nacl from 'tweetnacl'
+import HDKey from 'micro-key-producer/slip10.js'
 
 const RPC_URL = 'http://127.0.0.1:8899'
 const BIP_44_SOL_DERIVATION_PATH_PREFIX = "m/44'/501'"
@@ -17,25 +18,19 @@ const BIP_44_SOL_DERIVATION_PATH_PREFIX = "m/44'/501'"
 // Initialize wallet from mnemonic
 async function initialize (seedPhrase, index = 0) {
   const seed = bip39.mnemonicToSeedSync(seedPhrase)
-  const hd = HDKey.fromMasterSeed(seed.toString('hex'))
-  const fullPath = `${BIP_44_SOL_DERIVATION_PATH_PREFIX}/${index}'/0'`
-  const child = hd.derive(fullPath)
+  const hd = HDKey.fromMasterSeed(seed)
+  const fullPath = `${BIP_44_SOL_DERIVATION_PATH_PREFIX}/0'/0/${index}` // BIP-44 path for Solana accounts
+  const child = hd.derive(fullPath, true)
 
   const signer = await createKeyPairSignerFromPrivateKeyBytes(new Uint8Array(child.privateKey))
+  const keyPair = nacl.sign.keyPair.fromSeed(child.privateKey)
   return {
     privateKey: child.privateKey,
     publicKey: child.publicKey,
     path: fullPath,
-    feePayer: signer
+    feePayer: signer,
+    keyPair
   }
-}
-
-// Create 64-byte secret key for Keypair.fromSecretKey
-function getKeypairFromPrivateKey (privateKey, publicKey) {
-  const secretKey = new Uint8Array(64)
-  secretKey.set(new Uint8Array(privateKey), 0)
-  secretKey.set(new Uint8Array(publicKey).slice(1), 32) // remove version byte
-  return Keypair.fromSecretKey(secretKey)
 }
 
 // Create Mint using Token class
@@ -65,11 +60,11 @@ async function mintTokens (token, destination, authority, amount) {
 export async function createTestToken (seedPhrase) {
   try {
     const connection = new Connection(RPC_URL, 'confirmed')
-    const { privateKey, publicKey } = await initialize(seedPhrase)
-    const keypair = getKeypairFromPrivateKey(privateKey, publicKey)
-
+    const info = await initialize(seedPhrase)
+    const keyPair = Keypair.fromSecretKey(info.keyPair.secretKey)
     const recentBlockhash = await connection.getLatestBlockhash()
-    const airdropSignature = await connection.requestAirdrop(keypair.publicKey, LAMPORTS_PER_SOL)
+    const pubKey = keyPair.publicKey
+    const airdropSignature = await connection.requestAirdrop(pubKey, LAMPORTS_PER_SOL)
     await connection.confirmTransaction({
       blockhash: recentBlockhash.blockhash,
       lastValidBlockHeight: recentBlockhash.lastValidBlockHeight,
@@ -77,12 +72,12 @@ export async function createTestToken (seedPhrase) {
     })
 
     const decimals = 2
-    const mint = await createNewMint(connection, keypair, keypair.publicKey, decimals)
+    const mint = await createNewMint(connection, keyPair, pubKey, decimals)
 
-    const tokenAccount = await getOrCreateATA(connection, mint, keypair.publicKey)
+    const tokenAccount = await getOrCreateATA(connection, mint, pubKey)
 
     // Mint 100 tokens (100 * 10^decimals = 10000)
-    await mintTokens(mint, tokenAccount, keypair.publicKey, 100 * Math.pow(10, decimals))
+    await mintTokens(mint, tokenAccount, pubKey, 100 * Math.pow(10, decimals))
 
     return mint.publicKey.toBase58()
   } catch (err) {
@@ -93,17 +88,17 @@ export async function createTestToken (seedPhrase) {
 export async function sendCoinToIndexAccount (seedPhrase, index) {
   try {
     const connection = new Connection(RPC_URL, 'confirmed')
-    const { privateKey, publicKey } = await initialize(seedPhrase, index)
-    const keypair = getKeypairFromPrivateKey(privateKey, publicKey)
+    const info = await initialize(seedPhrase, index)
+    const keyPair = Keypair.fromSecretKey(info.keyPair.secretKey)
 
     const recentBlockhash = await connection.getLatestBlockhash()
-    const airdropSignature = await connection.requestAirdrop(keypair.publicKey, LAMPORTS_PER_SOL)
+    const airdropSignature = await connection.requestAirdrop(keyPair.publicKey, LAMPORTS_PER_SOL)
     await connection.confirmTransaction({
       blockhash: recentBlockhash.blockhash,
       lastValidBlockHeight: recentBlockhash.lastValidBlockHeight,
       signature: airdropSignature
     })
-    return keypair.publicKey.toBase58()
+    return keyPair.publicKey.toBase58()
   } catch (err) {
     console.error(err)
   }
@@ -123,5 +118,17 @@ export async function confirmTestTransaction (signature) {
   } catch (err) {
     console.error(err)
     return false
+  }
+}
+export async function getTransaction (hash) {
+  try {
+    const connection = new Connection(RPC_URL, 'confirmed')
+    const tx = await connection.getParsedTransaction(hash, {
+      maxSupportedTransactionVersion: 0
+    })
+    return tx
+  } catch (err) {
+    console.error(err)
+    return null
   }
 }
