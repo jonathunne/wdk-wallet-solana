@@ -3,52 +3,27 @@ export default class WalletAccountSolana implements IWalletAccount {
     /**
      * Creates a new solana wallet account.
      *
-     * @param {string|Uint8Array} seed - The wallet's [BIP-39](https://github.com/bitcoin/bips/blob/master/bip-0039.mediawiki) seed phrase or Uint8Array.
+     * @param {string | Uint8Array} seed - The wallet's [BIP-39](https://github.com/bitcoin/bips/blob/master/bip-0039.mediawiki) seed phrase.
      * @param {string} path - The BIP-44 derivation path (e.g. "0'/0/0").
      * @param {SolanaWalletConfig} [config] - The configuration object.
      */
-    static create(seed: string | Uint8Array, path: string, config?: SolanaWalletConfig): Promise<WalletAccountSolana>;
-    /**
-     * Creates an new un-initialized solana wallet account.
-     *
-     * @package
-     * @param {string|Uint8Array} seed - The wallet's [BIP-39](https://github.com/bitcoin/bips/blob/master/bip-0039.mediawiki) seed phrase or Uint8Array.
-     * @param {string} path - The BIP-44 derivation path (e.g. "0'/0/0").
-     * @param {SolanaWalletConfig} [config] - The configuration object.
-     */
-    constructor(seed: string | Uint8Array, path: string, config?: SolanaWalletConfig);
-    /**
-     * @private
-     * @type {Uint8Array}
-     * @description The seed buffer derived from the BIP-39 seed phrase.
-     */
-    private _seedBuffer;
-    /**
-     * @private
-     * @type {string}
-     * @description The BIP-44 derivation path for this account.
-     * @example "m/44'/501'/0'/0/0"
-     */
+    static at(seed: string | Uint8Array, path: string, config?: SolanaWalletConfig): Promise<WalletAccountSolana>;
+    /** @private */
+    private constructor();
+    /** @private */
+    private _seed;
+    /** @private */
     private _path;
-    /**
-     * @private
-     * @type {SolanaWalletConfig}
-     * @description The configuration object for the wallet account.
-     */
-    private _config;
-    /**
-     * Initializes the wallet account.
-     * @private
-     * @returns {Promise<void>}
-     */
-    private _initialize;
+    /** @private */
+    private _keyPair;
     /** @private */
     private _signer;
     /** @private */
-    private _keyPair;
-    _rpc: any;
-    _connection: any;
-    _rpcSubscriptions: any;
+    private _rpc;
+    /** @private */
+    private _connection;
+    /** @private */
+    private _rpcSubscriptions;
     /**
      * The derivation path's index of this account.
      *
@@ -89,75 +64,72 @@ export default class WalletAccountSolana implements IWalletAccount {
      */
     verify(message: string, signature: string): Promise<boolean>;
     /**
-     * Creates a transaction message for sending SOL or quoting fees.
-     * @private
-     * @param {SolanaTransaction} tx - The transaction details
-     * @param {string} version - The transaction message version ('legacy' or 0)
-     * @returns {Promise<Object>} The transaction message and instructions
-     */
-    private _createTransactionMessage;
-    /**
-     * Sends a transaction with arbitrary data.
+     * Returns the account's sol balance.
      *
-     * @param {SolanaTransaction} tx - The transaction to send.
-     * @returns {Promise<TransactionResult>} The transaction's hash.
-     */
-    sendTransaction(tx: SolanaTransaction): Promise<TransactionResult>;
-    /**
-     * Quotes a transaction.
-     *
-     * @param {SolanaTransaction} tx - The transaction to quote.
-     * @returns {Promise<Omit<TransactionResult,'hash'>>} The transaction's quotes.
-     */
-    quoteSendTransaction(tx: SolanaTransaction): Promise<Omit<TransactionResult, "hash">>;
-    /**
-     * Returns the account's native token balance.
-     *
-     * @returns {Promise<number>} The native token balance in lamports.
+     * @returns {Promise<number>} The sol balance (in lamports).
      */
     getBalance(): Promise<number>;
     /**
      * Returns the account balance for a specific token.
      *
      * @param {string} tokenAddress - The smart contract address of the token.
-     * @returns {Promise<number>} The token balance.
+     * @returns {Promise<number>} The token balance (in base unit).
      */
     getTokenBalance(tokenAddress: string): Promise<number>;
     /**
-     * Creates a transfer transaction.
-     * @private
-     * @param {TransferOptions} params - The transaction parameters.
-     * @returns {Promise<Web3Transaction>} The transfer transaction.
-     */
-    private _createTransfer;
-    /**
-     * Quotes a token transfer.
+     * Sends a transaction.
      *
-     * @param {TransferOptions} params - The transaction parameters.
-     * @returns {Promise<Omit<TransactionResult,'hash'>>} The transaction's quotes.
+     * @param {SolanaTransaction} tx - The transaction.
+     * @returns {Promise<TransactionResult>} The transaction's result.
      */
-    quoteTransfer({ recipient, token, amount }: TransferOptions): Promise<Omit<TransactionResult, "hash">>;
+    sendTransaction(tx: SolanaTransaction): Promise<TransactionResult>;
     /**
-     * Sends a token transaction.
+     * Quotes the costs of a send transaction operation.
      *
-     * @param {TransferOptions} params - The transaction parameters.
-     * @returns {Promise<TransactionResult>} The transaction's hash.
+     * @see {@link sendTransaction}
+     * @param {SolanaTransaction} tx - The transaction.
+     * @returns {Promise<Omit<TransactionResult, 'hash'>>} The transaction's quotes.
      */
-    transfer({ recipient, token, amount }: TransferOptions): Promise<TransactionResult>;
+    quoteSendTransaction(tx: SolanaTransaction): Promise<Omit<TransactionResult, "hash">>;
     /**
-   * Returns a solana transaction's detail
-   * @param {string} hash - The transaction's hash.
-   * @returns {Promise<SolanaTransactionReceipt | null>} The transaction's hash.
-   */
-    getTransactionReceipt(hash: string): Promise<SolanaTransactionReceipt | null>;
+     * Transfers a token to another address.
+     *
+     * @param {TransferOptions} options - The transfer's options.
+     * @returns {Promise<TransferResult>} The transfer's result.
+     */
+    transfer(options: TransferOptions): Promise<TransferResult>;
     /**
-     * Disposes of the wallet account.
-     * @returns {void}
+     * Quotes the costs of a transfer operation.
+     *
+     * @see {@link transfer}
+     * @param {TransferOptions} options - The transfer's options.
+     * @returns {Promise<Omit<TransferResult, 'hash'>>} The transfer's quotes.
+     */
+    quoteTransfer(options: TransferOptions): Promise<Omit<TransferResult, "hash">>;
+    /**
+     * Returns a transaction's receipt.
+     *
+     * @param {string} hash - The transaction's hash.
+     * @returns {Promise<SolanaTransactionReceipt>} – The receipt, or null if the transaction has not been included in a block yet.
+     */
+    getTransactionReceipt(hash: string): Promise<SolanaTransactionReceipt>;
+    /**
+     * Disposes the wallet account, erasing the private key from the memory.
      */
     dispose(): void;
+    /** @private */
+    private _initialize;
+    /** @private */
+    private _getTransaction;
+    /** @private */
+    private _getTransfer;
 }
-export type IWalletAccount = any;
+export type SolanaTransactionReceipt = ReturnType<import("@solana/rpc-api").SolanaRpcApi["getTransaction"]>;
+export type IWalletAccount = import("@wdk/wallet").IWalletAccount;
 export type KeyPair = import("@wdk/wallet").KeyPair;
+export type TransactionResult = import("@wdk/wallet").TransactionResult;
+export type TransferOptions = import("@wdk/wallet").TransferOptions;
+export type TransferResult = import("@wdk/wallet").TransferResult;
 export type SolanaTransaction = {
     /**
      * - The transaction's recipient.
@@ -168,39 +140,17 @@ export type SolanaTransaction = {
      */
     value: number;
 };
-export type SolanaTransactionReceipt = {
-    /**
-     * - The slot in which the transaction was processed.
-     */
-    slot: number;
-    /**
-     * - The transaction signature.
-     */
-    signature: string;
-    /**
-     * - Metadata about the transaction, including logs and status.
-     */
-    meta: any;
-    /**
-     * - The full transaction details.
-     */
-    transaction: any;
-    /**
-     * - The Unix timestamp when the block was processed.
-     */
-    blockTime?: number;
-};
 export type SolanaWalletConfig = {
     /**
-     * - The rpc url of the provider.
+     * - The provider's rpc url.
      */
     rpcUrl?: string;
     /**
-     * - The ws url of the provider is optional, if not provided, it will be derived from the rpc url.
-     * Note: only use this if you want to use a custom ws url.
+     * - The provider's websocket url. If not set, the rpc url will also be used for the websocket connection.
      */
     wsUrl?: string;
+    /**
+     * - The maximum fee amount for transfer operations.
+     */
+    transferMaxFee?: number;
 };
-export type TransferOptions = import("@wdk/wallet").TransferOptions;
-export type TransactionResult = import("@wdk/wallet").TransactionResult;
-export type TransferResult = import("@wdk/wallet").TransferResult;

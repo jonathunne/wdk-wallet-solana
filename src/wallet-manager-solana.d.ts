@@ -1,10 +1,8 @@
-/** @typedef {import('./wallet-account-solana.js').SolanaWalletConfig} SolanaWalletConfig */
-/** @typedef {import('@wdk/wallet').FeeRates} FeeRates */
 export default class WalletManagerSolana {
     /**
-     * Creates a new wallet manager for solana blockchains.
+     * Creates a new wallet manager for the solana blockchain.
      *
-     * @param {string|Uint8Array} seed - The wallet's seed, either as a [BIP-39](https://github.com/bitcoin/bips/blob/master/bip-0039.mediawiki) seed phrase or a Uint8Array.
+     * @param {string | Uint8Array} seed - The wallet's [BIP-39](https://github.com/bitcoin/bips/blob/master/bip-0039.mediawiki) seed phrase.
      * @param {SolanaWalletConfig} [config] - The configuration object.
      */
     constructor(seed: string | Uint8Array, config?: SolanaWalletConfig);
@@ -15,17 +13,9 @@ export default class WalletManagerSolana {
     * @type {SolanaWalletConfig}
     */
     protected _config: SolanaWalletConfig;
-    /**
-    * A map between derivation paths and wallet accounts. It contains all the wallet accounts that have been accessed through the {@link getAccount} and {@link getAccountByPath} methods.
-    *
-    * @private
-    * @type {{ [path: string]: WalletAccountSolana }}
-    */
+    /** @private */
     private _accounts;
-    /**
-     * The Solana RPC client instance.
-     * @private
-     */
+    /** @private */
     private _rpc;
     /**
      * Returns the wallet account at a specific index (see [BIP-44](https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki)).
@@ -50,14 +40,14 @@ export default class WalletManagerSolana {
     /**
      * Returns the current fee rates.
      *
-     * @returns {Promise<{FeeRates>} The fee rates (in lamports).
+     * @returns {Promise<FeeRates>} The fee rates (in lamports).
      */
-    getFeeRates(): Promise<{}>;
+    getFeeRates(): Promise<FeeRates>;
     /**
    * Disposes the wallet manager, erasing the seed buffer.
    */
     dispose(): void;
 }
-export type SolanaWalletConfig = import("./wallet-account-solana.js").SolanaWalletConfig;
 export type FeeRates = import("@wdk/wallet").FeeRates;
+export type SolanaWalletConfig = import("./wallet-account-solana.js").SolanaWalletConfig;
 import WalletAccountSolana from './wallet-account-solana.js';

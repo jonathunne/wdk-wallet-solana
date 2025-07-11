@@ -1,16 +1,9 @@
 {
   "name": "@wdk/wallet-solana",
   "version": "1.0.0-beta.1",
-  "description": "A simple package to manage BIP-32 wallets for Solana blockchains.",
+  "description": "A simple package to manage BIP-32 wallets for the solana blockchain.",
   "main": "index.js",
   "type": "module",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/tetherto/wdk-wallet-solana.git"
-  },
-  "publishConfig": {
-    "registry": "https://npm.pkg.github.com"
-  },
   "scripts": {
     "build:types": "rimraf *.d.ts **/*.d.ts; tsc",
     "lint": "standard --env jest",

@@ -14,47 +14,37 @@
 
 'use strict'
 
-import {
-  address,
-  createSolanaRpc,
-  createSolanaRpcSubscriptions,
-  createKeyPairSignerFromPrivateKeyBytes,
-  signBytes,
-  verifySignature,
-  createTransactionMessage,
-  setTransactionMessageFeePayerSigner,
-  setTransactionMessageLifetimeUsingBlockhash,
-  compileTransactionMessage,
-  getCompiledTransactionMessageEncoder,
-  getBase64Decoder,
-  pipe,
-  appendTransactionMessageInstructions,
-  lamports,
-  signTransactionMessageWithSigners,
-  getSignatureFromTransaction,
-  sendAndConfirmTransactionFactory
+import { 
+  address, createSolanaRpc, createSolanaRpcSubscriptions,
+  createKeyPairSignerFromPrivateKeyBytes, signBytes, verifySignature,
+  createTransactionMessage, setTransactionMessageFeePayerSigner, setTransactionMessageLifetimeUsingBlockhash,
+  compileTransactionMessage, getCompiledTransactionMessageEncoder, getBase64Decoder,
+  pipe, appendTransactionMessageInstructions, lamports,
+  signTransactionMessageWithSigners, getSignatureFromTransaction, sendAndConfirmTransactionFactory
 } from '@solana/kit'
+
+import { Connection, PublicKey, Keypair, Transaction } from '@solana/web3.js'
+
+import { Token, TOKEN_PROGRAM_ID } from '@solana/spl-token'
+
 import { getTransferSolInstruction } from '@solana-program/system'
-import * as bip39 from 'bip39'
+
 import HDKey from 'micro-key-producer/slip10.js'
-import {
-  Connection,
-  PublicKey,
-  Keypair,
-  Transaction as Web3Transaction
-} from '@solana/web3.js'
-import {
-  Token,
-  TOKEN_PROGRAM_ID
-} from '@solana/spl-token'
-import sodium from 'sodium-universal'
+
 import nacl from 'tweetnacl'
 
-/**
- * @typedef {import("@wdk/wallet").IWalletAccount} IWalletAccount
- */
+import * as bip39 from 'bip39'
+
+import { sodium_memzero } from 'sodium-universal'
+
+/** @typedef {ReturnType<import("@solana/rpc-api").SolanaRpcApi['getTransaction']>} SolanaTransactionReceipt */
+
+/** @typedef {import("@wdk/wallet").IWalletAccount} IWalletAccount */
 
 /** @typedef {import('@wdk/wallet').KeyPair} KeyPair */
+/** @typedef {import('@wdk/wallet').TransactionResult} TransactionResult */
+/** @typedef {import('@wdk/wallet').TransferOptions} TransferOptions */
+/** @typedef {import('@wdk/wallet').TransferResult} TransferResult */
 
 /**
  * @typedef {Object} SolanaTransaction
@@ -63,108 +53,65 @@ import nacl from 'tweetnacl'
  */
 
 /**
- * @typedef {Object} SolanaTransactionReceipt
- * @property {number} slot - The slot in which the transaction was processed.
- * @property {string} signature - The transaction signature.
- * @property {Object} meta - Metadata about the transaction, including logs and status.
- * @property {Object} transaction - The full transaction details.
- * @property {number} [blockTime] - The Unix timestamp when the block was processed.
- */
-
-/**
  * @typedef {Object} SolanaWalletConfig
- * @property {string} [rpcUrl] - The rpc url of the provider.
- * @property {string} [wsUrl] - The ws url of the provider is optional, if not provided, it will be derived from the rpc url.
- * Note: only use this if you want to use a custom ws url.
+ * @property {string} [rpcUrl] - The provider's rpc url.
+ * @property {string} [wsUrl] - The provider's websocket url. If not set, the rpc url will also be used for the websocket connection.
+ * @property {number} [transferMaxFee] - The maximum fee amount for transfer operations.
  */
-
-/** @typedef {import('@wdk/wallet').TransferOptions} TransferOptions */
-
-/** @typedef {import('@wdk/wallet').TransactionResult} TransactionResult */
-
-/** @typedef {import('@wdk/wallet').TransferResult} TransferResult */
 
 const BIP_44_SOL_DERIVATION_PATH_PREFIX = "m/44'/501'"
 
 /** @implements {IWalletAccount} */
 export default class WalletAccountSolana {
-  /**
-   * Creates a new solana wallet account.
-   *
-   * @param {string|Uint8Array} seed - The wallet's [BIP-39](https://github.com/bitcoin/bips/blob/master/bip-0039.mediawiki) seed phrase or Uint8Array.
-   * @param {string} path - The BIP-44 derivation path (e.g. "0'/0/0").
-   * @param {SolanaWalletConfig} [config] - The configuration object.
-   */
-  static async create (seed, path, config = {}) {
-    const instance = new WalletAccountSolana(seed, path, config)
-    await instance._initialize()
-    return instance
-  }
-
-  /**
-   * Creates an new un-initialized solana wallet account.
-   *
-   * @package
-   * @param {string|Uint8Array} seed - The wallet's [BIP-39](https://github.com/bitcoin/bips/blob/master/bip-0039.mediawiki) seed phrase or Uint8Array.
-   * @param {string} path - The BIP-44 derivation path (e.g. "0'/0/0").
-   * @param {SolanaWalletConfig} [config] - The configuration object.
-   */
+  /** @private */
   constructor (seed, path, config = {}) {
     if (typeof seed === 'string') {
       if (!bip39.validateMnemonic(seed)) {
         throw new Error('The seed phrase is invalid.')
       }
+
       seed = bip39.mnemonicToSeedSync(seed)
     }
 
-    /**
-     * @private
-     * @type {Uint8Array}
-     * @description The seed buffer derived from the BIP-39 seed phrase.
-     */
-    this._seedBuffer = seed
+    /** @private */
+    this._seed = seed
 
-    /**
-     * @private
-     * @type {string}
-     * @description The BIP-44 derivation path for this account.
-     * @example "m/44'/501'/0'/0/0"
-     */
+    /** @private */
     this._path = `${BIP_44_SOL_DERIVATION_PATH_PREFIX}/${path}`
 
-    /**
-     * @private
-     * @type {SolanaWalletConfig}
-     * @description The configuration object for the wallet account.
-     */
-    this._config = config
+    /** @private */
+    this._keyPair = undefined
+
+    /** @private */
+    this._signer = undefined
+
+    const { rpcUrl, wsUrl } = config
+
+    if (rpcUrl) {
+      /** @private */
+      this._rpc = createSolanaRpc(rpcUrl)
+
+      /** @private */
+      this._connection = new Connection(rpcUrl, 'processed')
+
+      /** @private */
+      this._rpcSubscriptions = createSolanaRpcSubscriptions(wsUrl || rpcUrl.replace('http', 'ws'))
+    }
   }
 
   /**
-   * Initializes the wallet account.
-   * @private
-   * @returns {Promise<void>}
+   * Creates a new solana wallet account.
+   *
+   * @param {string | Uint8Array} seed - The wallet's [BIP-39](https://github.com/bitcoin/bips/blob/master/bip-0039.mediawiki) seed phrase.
+   * @param {string} path - The BIP-44 derivation path (e.g. "0'/0/0").
+   * @param {SolanaWalletConfig} [config] - The configuration object.
    */
-  async _initialize () {
-    const hdKey = HDKey.fromMasterSeed(this._seedBuffer)
+  static async at (seed, path, config = {}) {
+    const account = new WalletAccountSolana(seed, path, config)
 
-    const { privateKey } = hdKey.derive(this._path, true)
-
-    /** @private */
-    this._signer = await createKeyPairSignerFromPrivateKeyBytes(privateKey)
-
-    /** @private */
-    this._keyPair = nacl.sign.keyPair.fromSeed(privateKey)
-
-    sodium.sodium_memzero(privateKey)
-
-    const { rpcUrl, wsUrl } = this._config
-    if (rpcUrl) {
-      this._rpc = createSolanaRpc(rpcUrl)
-      this._connection = new Connection(rpcUrl, 'processed')
-
-      this._rpcSubscriptions = createSolanaRpcSubscriptions(wsUrl || rpcUrl.replace('http', 'ws'))
-    }
+    await account._initialize()
+    
+    return account
   }
 
   /**
@@ -173,7 +120,7 @@ export default class WalletAccountSolana {
    * @type {number}
    */
   get index () {
-    return parseInt(this.path.split('/').pop())
+    return +this.path.split('/').pop()
   }
 
   /**
@@ -214,13 +161,9 @@ export default class WalletAccountSolana {
    */
   async sign (message) {
     const messageBytes = Buffer.from(message, 'utf8')
+    const signatureBytes = await signBytes(this._signer.keyPair.privateKey, messageBytes)
+    const signature = Buffer.from(signatureBytes).toString('hex')
 
-    const signedBytes = await signBytes(
-      this._signer.keyPair.privateKey,
-      messageBytes
-    )
-
-    const signature = Buffer.from(signedBytes).toString('hex')
     return signature
   }
 
@@ -232,76 +175,84 @@ export default class WalletAccountSolana {
    * @returns {Promise<boolean>} True if the signature is valid.
    */
   async verify (message, signature) {
-    const messageBytes = Buffer.from(message, 'utf8')
-    const signatureBytes = Buffer.from(signature, 'hex')
-    const isValid = await verifySignature(
-      this._signer.keyPair.publicKey,
-      signatureBytes,
-      messageBytes
-    )
+    const messageBytes = Buffer.from(message, 'utf8'),
+          signatureBytes = Buffer.from(signature, 'hex')
+
+    const isValid = await verifySignature(this._signer.keyPair.publicKey, signatureBytes, messageBytes)
 
     return isValid
   }
 
   /**
-   * Creates a transaction message for sending SOL or quoting fees.
-   * @private
-   * @param {SolanaTransaction} tx - The transaction details
-   * @param {string} version - The transaction message version ('legacy' or 0)
-   * @returns {Promise<Object>} The transaction message and instructions
+   * Returns the account's sol balance.
+   *
+   * @returns {Promise<number>} The sol balance (in lamports).
    */
-  async _createTransactionMessage (tx, version = 0) {
-    const { to, value } = tx
-    const recipient = address(to)
+  async getBalance () {
+    if (!this._rpc) {
+      throw new Error('The wallet must be connected to a provider to retrieve balances.')
+    }
 
-    const { value: latestBlockhash } = await this._rpc
-      .getLatestBlockhash()
-      .send()
+    const address = await this.getAddress()
 
-    const transferInstruction = getTransferSolInstruction({
-      source: this._signer,
-      destination: recipient,
-      amount: lamports(BigInt(value))
-    })
+    const { value } = await this._rpc.getBalance(address).send()
 
-    const instructions = [transferInstruction]
-
-    const transactionMessage = pipe(
-      createTransactionMessage({ version }),
-      (tx) => setTransactionMessageFeePayerSigner(this._signer, tx),
-      (tx) => setTransactionMessageLifetimeUsingBlockhash(latestBlockhash, tx),
-      (tx) => appendTransactionMessageInstructions(instructions, tx)
-    )
-
-    return { transactionMessage, instructions }
+    return Number(value)
   }
 
   /**
-   * Sends a transaction with arbitrary data.
+   * Returns the account balance for a specific token.
    *
-   * @param {SolanaTransaction} tx - The transaction to send.
-   * @returns {Promise<TransactionResult>} The transaction's hash.
+   * @param {string} tokenAddress - The smart contract address of the token.
+   * @returns {Promise<number>} The token balance (in base unit).
+   */
+  async getTokenBalance (tokenAddress) {
+    if (!this._rpc) {
+      throw new Error('The wallet must be connected to a provider to retrieve token balances.')
+    }
+
+    const ownerAddress = new PublicKey(this.keyPair.publicKey),
+          mint = new PublicKey(tokenAddress)
+    
+    const tokenAccounts = await this._connection.getTokenAccountsByOwner(ownerAddress, { mint })
+
+    const account = tokenAccounts.value[0]
+
+    if (!account) {
+      return 0
+    }
+
+    const { value: { amount } } = await this._connection.getTokenAccountBalance(account.pubkey)
+
+    return Number(amount)
+  }
+
+  /**
+   * Sends a transaction.
+   *
+   * @param {SolanaTransaction} tx - The transaction.
+   * @returns {Promise<TransactionResult>} The transaction's result.
    */
   async sendTransaction (tx) {
-    if (!this._rpc || !this._rpcSubscriptions) {
-      throw new Error(
-        'The wallet must be connected to a provider to send transactions.'
-      )
+    if (!this._rpc) {
+      throw new Error('The wallet must be connected to a provider to send transactions.')
     }
-    const { transactionMessage } = await this._createTransactionMessage(tx)
+
+    const transaction = await this._getTransaction(tx)
+
+    const compiledTransactionMessageEncoder = getCompiledTransactionMessageEncoder(),
+          base64Decoder = getBase64Decoder()
 
     const base64EncodedMessage = pipe(
-      transactionMessage,
+      transaction,
       compileTransactionMessage,
-      getCompiledTransactionMessageEncoder().encode,
-      getBase64Decoder().decode
+      compiledTransactionMessageEncoder.encode,
+      base64Decoder.decode
     )
 
     const fee = await this._rpc.getFeeForMessage(base64EncodedMessage).send()
 
-    const signedTransaction = await signTransactionMessageWithSigners(
-      transactionMessage
-    )
+    const signedTransaction = await signTransactionMessageWithSigners(transaction)
 
     const sendAndConfirm = sendAndConfirmTransactionFactory({
       rpc: this._rpc,
@@ -313,183 +264,175 @@ export default class WalletAccountSolana {
     })
 
     const hash = getSignatureFromTransaction(signedTransaction)
+
     return { hash, fee: Number(fee.value) }
   }
 
   /**
-   * Quotes a transaction.
+   * Quotes the costs of a send transaction operation.
    *
-   * @param {SolanaTransaction} tx - The transaction to quote.
-   * @returns {Promise<Omit<TransactionResult,'hash'>>} The transaction's quotes.
+   * @see {@link sendTransaction}
+   * @param {SolanaTransaction} tx - The transaction.
+   * @returns {Promise<Omit<TransactionResult, 'hash'>>} The transaction's quotes.
    */
   async quoteSendTransaction (tx) {
     if (!this._rpc) {
-      throw new Error(
-        'The wallet must be connected to a provider to quote transactions.'
-      )
+      throw new Error('The wallet must be connected to a provider to quote transactions.')
     }
 
-    const { transactionMessage } = await this._createTransactionMessage(tx)
+    const transaction = await this._getTransaction(tx)
+
+    const compiledTransactionMessageEncoder = getCompiledTransactionMessageEncoder(),
+          base64Decoder = getBase64Decoder()
 
     const base64EncodedMessage = pipe(
-      transactionMessage,
+      transaction,
       compileTransactionMessage,
-      getCompiledTransactionMessageEncoder().encode,
-      getBase64Decoder().decode
+      compiledTransactionMessageEncoder.encode,
+      base64Decoder.decode
     )
 
-    const feeInfo = await this._rpc.getFeeForMessage(base64EncodedMessage).send()
-    return { fee: Number(feeInfo.value) }
+    const fee = await this._rpc.getFeeForMessage(base64EncodedMessage).send()
+
+    return { fee: Number(fee.value) }
   }
 
   /**
-   * Returns the account's native token balance.
+   * Transfers a token to another address.
    *
-   * @returns {Promise<number>} The native token balance in lamports.
+   * @param {TransferOptions} options - The transfer's options.
+   * @returns {Promise<TransferResult>} The transfer's result.
    */
-  async getBalance () {
+  async transfer (options) {
     if (!this._rpc) {
-      throw new Error(
-        'The wallet must be connected to a provider to retrieve balances.'
-      )
+      throw new Error('The wallet must be connected to a provider to transfer tokens.')
     }
 
-    const address = await this.getAddress()
-    const response = await this._rpc.getBalance(address).send()
-    const balance = response.value
-    return Number(balance)
+    const transfer = await this._getTransfer(options)
+    const message = transfer.compileMessage()
+    const fee = await this._connection.getFeeForMessage(message)
+
+    const transaction = transfer.serialize()
+    const hash = await this._connection.sendRawTransaction(transaction)
+
+    return { hash, fee: Number(fee.value) }
   }
 
   /**
-   * Returns the account balance for a specific token.
+   * Quotes the costs of a transfer operation.
    *
-   * @param {string} tokenAddress - The smart contract address of the token.
-   * @returns {Promise<number>} The token balance.
+   * @see {@link transfer}
+   * @param {TransferOptions} options - The transfer's options.
+   * @returns {Promise<Omit<TransferResult, 'hash'>>} The transfer's quotes.
    */
-  async getTokenBalance (tokenAddress) {
-    if (!this._config.rpcUrl) {
-      throw new Error(
-        'rpcUrl is required to retrieve token balances.'
-      )
+  async quoteTransfer (options) {
+    if (!this._rpc) {
+      throw new Error('The wallet must be connected to a provider to quote transfer operations.')
     }
 
-    const tokenMint = new PublicKey(tokenAddress)
-    const walletPublicKey = new PublicKey(this.keyPair.publicKey)
-    const tokenAccounts = await this._connection.getTokenAccountsByOwner(
-      walletPublicKey,
-      {
-        mint: tokenMint
-      }
-    )
+    const transfer = await this._getTransfer(options)
+    const message = transfer.compileMessage()
+    const fee = await this._connection.getFeeForMessage(message)
 
-    if (tokenAccounts.value.length === 0) {
-      return 0 // No token accounts found for this mint
-    }
-
-    const balance = await this._connection.getTokenAccountBalance(
-      tokenAccounts.value[0].pubkey
-    )
-    return Number(balance.value.amount)
+    return { fee: Number(fee.value) }
   }
 
   /**
-   * Creates a transfer transaction.
-   * @private
-   * @param {TransferOptions} params - The transaction parameters.
-   * @returns {Promise<Web3Transaction>} The transfer transaction.
+   * Returns a transaction's receipt.
+   *
+   * @param {string} hash - The transaction's hash.
+   * @returns {Promise<SolanaTransactionReceipt>} – The receipt, or null if the transaction has not been included in a block yet.
    */
-  async _createTransfer ({ recipient, token, amount }) {
-    const mint = new PublicKey(token)
-    const receiver = new PublicKey(recipient)
-    // Note: web3.js requires the keypair to be in the format of Keypair class
+  async getTransactionReceipt (hash) {
+    if (!this._rpc) {
+      throw new Error('The wallet must be connected to a provider to fetch transaction receipts.')
+    }
+    
+    const transaction = await this._rpc.getTransaction(hash, {
+      commitment: 'confirmed',
+      encoding: 'jsonParsed',
+      maxSupportedTransactionVersion: 0
+    })
+      .send()
+
+    return transaction
+  }
+
+  /**
+   * Disposes the wallet account, erasing the private key from the memory.
+   */
+  dispose () {
+    sodium_memzero(this._keyPair.secretKey)
+
+    this._keyPair.secretKey = undefined
+  }
+
+  /** @private */
+  async _initialize () {
+    const hdKey = HDKey.fromMasterSeed(this._seed)
+
+    const { privateKey } = hdKey.derive(this._path, true)
+
+    this._keyPair = nacl.sign.keyPair.fromSeed(privateKey)
+
+    this._signer = await createKeyPairSignerFromPrivateKeyBytes(privateKey)
+
+    sodium.sodium_memzero(privateKey)
+  }
+
+  /** @private */
+  async _getTransaction ({ to, value }) {
+    const { value: latestBlockhash } = await this._rpc
+      .getLatestBlockhash()
+      .send()
+
+    const instruction = getTransferSolInstruction({
+      source: this._signer,
+      destination: address(to),
+      amount: lamports(BigInt(value))
+    })
+
+    const transaction = pipe(
+      createTransactionMessage({ version: 0 }),
+      (tx) => setTransactionMessageFeePayerSigner(this._signer, tx),
+      (tx) => setTransactionMessageLifetimeUsingBlockhash(latestBlockhash, tx),
+      (tx) => appendTransactionMessageInstructions([ instruction ], tx)
+    )
+
+    return transaction
+  }
+
+  /** @private */
+  async _getTransfer ({ token, recipient, amount }) {
+    const mint = new PublicKey(token),
+          receiver = new PublicKey(recipient)
+
     const signer = Keypair.fromSecretKey(this._keyPair.secretKey)
 
     const sender = new PublicKey(signer.publicKey)
-    // Create Token object
-    const tokenClient = new Token(
-      this._connection,
-      mint,
+
+    const client = new Token(this._connection, mint, TOKEN_PROGRAM_ID, signer)
+    
+    const fromTokenAccount = await client.getOrCreateAssociatedAccountInfo(sender),
+          toTokenAccount = await client.getOrCreateAssociatedAccountInfo(receiver)
+
+    const instruction = Token.createTransferInstruction(
       TOKEN_PROGRAM_ID,
-      signer
+      fromTokenAccount.address, 
+      toTokenAccount.address,
+      sender,
+      [],
+      amount
     )
 
-    // Get associated token accounts
-    const fromTokenAccount = await tokenClient.getOrCreateAssociatedAccountInfo(sender)
-    const toTokenAccount = await tokenClient.getOrCreateAssociatedAccountInfo(receiver)
+    const transaction = new Transaction().add(instruction)
 
-    // Create transfer instruction
-    const transaction = new Web3Transaction().add(
-      Token.createTransferInstruction(
-        TOKEN_PROGRAM_ID,
-        fromTokenAccount.address,
-        toTokenAccount.address,
-        sender,
-        [],
-        amount
-      )
-    )
-
-    // Set transaction properties
     const { blockhash } = await this._connection.getLatestBlockhash()
     transaction.recentBlockhash = blockhash
     transaction.feePayer = sender
 
     transaction.sign(signer)
+
     return transaction
-  }
-
-  /**
-   * Quotes a token transfer.
-   *
-   * @param {TransferOptions} params - The transaction parameters.
-   * @returns {Promise<Omit<TransactionResult,'hash'>>} The transaction's quotes.
-   */
-  async quoteTransfer ({ recipient, token, amount }) {
-    const transaction = await this._createTransfer({ recipient, token, amount })
-    const message = transaction.compileMessage() // Returns a Message object
-    const feeInfo = await this._connection.getFeeForMessage(message)
-    return { fee: Number(feeInfo.value) }
-  }
-
-  /**
-   * Sends a token transaction.
-   *
-   * @param {TransferOptions} params - The transaction parameters.
-   * @returns {Promise<TransactionResult>} The transaction's hash.
-   */
-  async transfer ({ recipient, token, amount }) {
-    const transaction = await this._createTransfer({ recipient, token, amount })
-
-    const message = transaction.compileMessage() // Returns a Message object
-    const feeInfo = await this._connection.getFeeForMessage(message)
-
-    const signature = await this._connection.sendRawTransaction(
-      transaction.serialize()
-    )
-
-    return { hash: signature, fee: Number(feeInfo.value) }
-  }
-
-  /**
- * Returns a solana transaction's detail
- * @param {string} hash - The transaction's hash.
- * @returns {Promise<SolanaTransactionReceipt | null>} The transaction's hash.
- */
-  async getTransactionReceipt (hash) {
-    const tx = await this._rpc.getTransaction(hash, {
-      encoding: 'jsonParsed',
-      maxSupportedTransactionVersion: 0,
-      commitment: 'confirmed'
-    }).send()
-    return tx
-  }
-
-  /**
-   * Disposes of the wallet account.
-   * @returns {void}
-   */
-  dispose () {
-    sodium.sodium_memzero(this._keyPair.secretKey)
-    this._keyPair.secretKey = undefined
   }
 }

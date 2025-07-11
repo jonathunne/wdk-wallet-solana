@@ -33,16 +33,16 @@ describe('WalletAccountSolana', () => {
   })
 
   beforeEach(async () => {
-    account = await WalletAccountSolana.create(VALID_SEED, VALID_PATH, VALID_CONFIG)
+    account = await WalletAccountSolana.at(VALID_SEED, VALID_PATH, VALID_CONFIG)
   })
 
   afterEach(() => {
     account?.dispose()
   })
 
-  describe('create', () => {
+  describe('at', () => {
     test('should successfully initialize an account for the given seed phrase and path', async () => {
-      const account = await WalletAccountSolana.create(SEED_PHRASE, VALID_PATH)
+      const account = await WalletAccountSolana.at(SEED_PHRASE, VALID_PATH)
 
       expect(account.index).toBe(ACCOUNT.index)
 
@@ -56,7 +56,7 @@ describe('WalletAccountSolana', () => {
     })
 
     test('should successfully initialize an account for the given seed and path', async () => {
-      const account = await WalletAccountSolana.create(VALID_SEED, VALID_PATH)
+      const account = await WalletAccountSolana.at(VALID_SEED, VALID_PATH)
 
       expect(account.index).toBe(ACCOUNT.index)
 
@@ -69,12 +69,12 @@ describe('WalletAccountSolana', () => {
     })
 
     test('should throw if the seed phrase is invalid', async () => {
-      await expect(WalletAccountSolana.create(INVALID_SEED_PHRASE, VALID_PATH)).rejects
+      await expect(WalletAccountSolana.at(INVALID_SEED_PHRASE, VALID_PATH)).rejects
         .toThrow('The seed phrase is invalid.')
     })
 
     test('should throw if the path is invalid', async () => {
-      await expect(WalletAccountSolana.create(SEED_PHRASE, "a'/b")).rejects
+      await expect(WalletAccountSolana.at(SEED_PHRASE, "a'/b")).rejects
         .toThrow('Invalid child index: a')
     })
   })
@@ -158,7 +158,7 @@ describe('WalletAccountSolana', () => {
     test('should get wallet balance', async () => {
       await sendCoinToIndexAccount(SEED_PHRASE, 1)
 
-      const account = await WalletAccountSolana.create(VALID_SEED, INDEX_1_ACCOUNT_PATH, VALID_CONFIG)
+      const account = await WalletAccountSolana.at(VALID_SEED, INDEX_1_ACCOUNT_PATH, VALID_CONFIG)
 
       const balance = await account.getBalance()
       expect(balance).toBeGreaterThanOrEqual(1000000000)
@@ -172,7 +172,7 @@ describe('WalletAccountSolana', () => {
 
   describe('getTokenBalance', () => {
     test('should return the correct token balance of the account', async () => {
-      const tokenAccount = await WalletAccountSolana.create(VALID_SEED, INDEX_1_ACCOUNT_PATH, VALID_CONFIG)
+      const tokenAccount = await WalletAccountSolana.at(VALID_SEED, INDEX_1_ACCOUNT_PATH, VALID_CONFIG)
 
       const TOKEN_TRANSACTION = { recipient: TO_ADDRESS, token: VALID_TOKEN, amount: 200 }
       const txResult = await account.transfer(TOKEN_TRANSACTION)

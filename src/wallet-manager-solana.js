@@ -14,21 +14,27 @@
 
 'use strict'
 
-import { createSolanaRpc } from '@solana/kit'
-import WalletAccountSolana from './wallet-account-solana.js'
 import AbstractWalletManager from '@wdk/wallet'
 
-const FEE_RATE_NORMAL_MULTIPLIER = 1.1
-const FEE_RATE_FAST_MULTIPLIER = 2.0
-const DEFAULT_BASE_FEE = 5000
-/** @typedef {import('./wallet-account-solana.js').SolanaWalletConfig} SolanaWalletConfig */
+import { createSolanaRpc } from '@solana/kit'
+
+import WalletAccountSolana from './wallet-account-solana.js'
+
 /** @typedef {import('@wdk/wallet').FeeRates} FeeRates */
+
+/** @typedef {import('./wallet-account-solana.js').SolanaWalletConfig} SolanaWalletConfig */
+
+const FEE_RATE_NORMAL_MULTIPLIER = 1.1
+
+const FEE_RATE_FAST_MULTIPLIER = 2.0
+
+const DEFAULT_BASE_FEE = 5_000
 
 export default class WalletManagerSolana extends AbstractWalletManager {
   /**
-   * Creates a new wallet manager for solana blockchains.
+   * Creates a new wallet manager for the solana blockchain.
    *
-   * @param {string|Uint8Array} seed - The wallet's seed, either as a [BIP-39](https://github.com/bitcoin/bips/blob/master/bip-0039.mediawiki) seed phrase or a Uint8Array.
+   * @param {string | Uint8Array} seed - The wallet's [BIP-39](https://github.com/bitcoin/bips/blob/master/bip-0039.mediawiki) seed phrase.
    * @param {SolanaWalletConfig} [config] - The configuration object.
    */
   constructor (seed, config = {}) {
@@ -42,18 +48,10 @@ export default class WalletManagerSolana extends AbstractWalletManager {
     */
     this._config = config
 
-    /**
-    * A map between derivation paths and wallet accounts. It contains all the wallet accounts that have been accessed through the {@link getAccount} and {@link getAccountByPath} methods.
-    *
-    * @private
-    * @type {{ [path: string]: WalletAccountSolana }}
-    */
+    /** @private */
     this._accounts = {}
 
-    /**
-     * The Solana RPC client instance.
-     * @private
-     */
+    /** @private */
     this._rpc = createSolanaRpc(this._config.rpcUrl)
   }
 
@@ -81,49 +79,46 @@ export default class WalletManagerSolana extends AbstractWalletManager {
    */
   async getAccountByPath (path) {
     if (!this._accounts[path]) {
-      const account = await WalletAccountSolana.create(this.seed, path, this._config)
+      const account = await WalletAccountSolana.at(this.seed, path, this._config)
+
       this._accounts[path] = account
     }
+
     return this._accounts[path]
   }
 
   /**
    * Returns the current fee rates.
    *
-   * @returns {Promise<{FeeRates>} The fee rates (in lamports).
+   * @returns {Promise<FeeRates>} The fee rates (in lamports).
    */
   async getFeeRates () {
     if (!this._rpc) {
-      throw new Error(
-        'The wallet must be connected to a provider to get fee rates.'
-      )
+      throw new Error('The wallet must be connected to a provider to get fee rates.')
     }
 
-    // Get recent prioritization fees
     const fees = await this._rpc.getRecentPrioritizationFees().send()
 
-    // Find the highest non-zero fee, or use default
     const nonZeroFees = fees.filter(fee => fee.prioritizationFee > 0n)
-    const baseFee = nonZeroFees.length > 0
+
+    const fee = nonZeroFees.length > 0
       ? Number(nonZeroFees.reduce((max, fee) => fee.prioritizationFee > max ? fee.prioritizationFee : max, 0n))
       : DEFAULT_BASE_FEE
 
-    const normalFee = Math.round(baseFee * FEE_RATE_NORMAL_MULTIPLIER)
-    const fastFee = Math.round(baseFee * FEE_RATE_FAST_MULTIPLIER)
-
     return {
-      normal: normalFee,
-      fast: fastFee
+      normal: Math.round(fee * FEE_RATE_NORMAL_MULTIPLIER),
+      fast: fee * FEE_RATE_FAST_MULTIPLIER
     }
   }
 
   /**
- * Disposes the wallet manager, erasing the seed buffer.
- */
+   * Disposes all the wallet accounts, erasing their private keys from the memory.
+   */
   dispose () {
     for (const account of Object.values(this._accounts)) {
       account.dispose()
     }
-    this._accounts = {}
+
+    this._accounts = { }
   }
 }
