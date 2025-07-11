@@ -15,6 +15,8 @@ export default class WalletAccountSolana implements IWalletAccount {
     /** @private */
     private _path;
     /** @private */
+    private _config;
+    /** @private */
     private _keyPair;
     /** @private */
     private _signer;

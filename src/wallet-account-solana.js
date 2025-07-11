@@ -80,6 +80,9 @@ export default class WalletAccountSolana {
     this._path = `${BIP_44_SOL_DERIVATION_PATH_PREFIX}/${path}`
 
     /** @private */
+    this._config = config
+
+    /** @private */
     this._keyPair = undefined
 
     /** @private */
