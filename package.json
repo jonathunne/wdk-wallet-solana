@@ -13,12 +13,10 @@
   "exports": {
     ".": {
       "bare": "./bare.js",
-      "import": "./index.js",
-      "types": "./types/index.d.ts"
+      "types": "./types/index.d.ts",
+      "default": "./index.js"
     },
-    "./package": {
-      "default": "./package.json"
-    }
+    "./package": "./package.json"
   },
   "dependencies": {
     "@solana-program/system": "0.7.0",
