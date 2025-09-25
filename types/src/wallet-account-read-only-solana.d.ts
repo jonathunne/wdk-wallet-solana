@@ -89,9 +89,9 @@ export type SolanaRpc = ReturnType<typeof createSolanaRpc>;
 export type SolanaRpcSubscriptions = ReturnType<typeof createSolanaRpcSubscriptions>;
 export type SolanaTransactionReceipt = ReturnType<import("@solana/rpc-api").SolanaRpcApi["getTransaction"]>;
 export type TransactionMessage = import("@solana/transaction-messages").TransactionMessage;
-export type TransactionResult = import("@wdk/wallet").TransactionResult;
-export type TransferOptions = import("@wdk/wallet").TransferOptions;
-export type TransferResult = import("@wdk/wallet").TransferResult;
+export type TransactionResult = import("@tetherto/wdk-wallet").TransactionResult;
+export type TransferOptions = import("@tetherto/wdk-wallet").TransferOptions;
+export type TransferResult = import("@tetherto/wdk-wallet").TransferResult;
 export type SolanaTransaction = {
     /**
      * - The transaction's recipient.
@@ -116,6 +116,6 @@ export type SolanaWalletConfig = {
      */
     transferMaxFee?: number | bigint;
 };
-import { WalletAccountReadOnly } from '@wdk/wallet';
+import { WalletAccountReadOnly } from '@tetherto/wdk-wallet';
 import { Connection, Transaction } from '@solana/web3.js';
 import { createSolanaRpc, createSolanaRpcSubscriptions } from '@solana/kit';
