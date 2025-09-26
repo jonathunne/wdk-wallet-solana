@@ -1,4 +1,4 @@
-# @wdk/wallet-solana
+# @tetherto/wdk-wallet-solana
 
 **Note**: This package is currently in beta. Please test thoroughly in development environments before using in production.
 
@@ -19,17 +19,17 @@ For detailed documentation about the complete WDK ecosystem, visit [docs.wallet.
 
 ## ⬇️ Installation
 
-To install the `@wdk/wallet-solana` package, follow these instructions:
+To install the `@tetherto/wdk-wallet-solana` package, follow these instructions:
 
 You can install it using npm:
 
 ```bash
-npm install @wdk/wallet-solana
+npm install @tetherto/wdk-wallet-solana
 ```
 
 ## 🚀 Quick Start
 
-### Importing from `@wdk/wallet-solana`
+### Importing from `@tetherto/wdk-wallet-solana`
 
 1. WalletManagerSolana: Main class for managing wallets
 2. WalletAccountSolana: Use this for full access accounts
@@ -41,7 +41,7 @@ npm install @wdk/wallet-solana
 import WalletManagerSolana, { 
   WalletAccountSolana, 
   WalletAccountReadOnlySolana 
-} from '@wdk/wallet-solana'
+} from '@tetherto/wdk-wallet-solana'
 
 // Use a BIP-39 seed phrase (replace with your own secure phrase)
 const seedPhrase = 'test only example nut use this real life secret phrase must random'
@@ -62,7 +62,7 @@ const readOnlyAccount = await account.toReadOnlyAccount()
 ### Managing Multiple Accounts
 
 ```javascript
-import WalletManagerSolana from '@wdk/wallet-solana'
+import WalletManagerSolana from '@tetherto/wdk-wallet-solana'
 
 // Assume wallet is already created
 // Get the first account (index 0)
@@ -91,7 +91,7 @@ console.log('Custom account address:', customAddress)
 For accounts where you have the seed phrase and full access:
 
 ```javascript
-import WalletManagerSolana from '@wdk/wallet-solana'
+import WalletManagerSolana from '@tetherto/wdk-wallet-solana'
 
 // Assume wallet and account are already created
 // Get native SOL balance (in lamports)
@@ -112,7 +112,7 @@ console.log('Token balance:', tokenBalance);
 For addresses where you don't have the seed phrase:
 
 ```javascript
-import { WalletAccountReadOnlySolana } from '@wdk/wallet-solana'
+import { WalletAccountReadOnlySolana } from '@tetherto/wdk-wallet-solana'
 
 // Create a read-only account
 const readOnlyAccount = new WalletAccountReadOnlySolana('publicKey', { // Base58-encoded public key
@@ -227,14 +227,14 @@ wallet.dispose()
 
 | Class | Description | Methods |
 |-------|-------------|---------|
-| [WalletManagerSolana](#walletmanagersolana) | Main class for managing Solana wallets. Extends `WalletManager` from `@wdk/wallet`. | [Constructor](#constructor), [Methods](#methods) |
+| [WalletManagerSolana](#walletmanagersolana) | Main class for managing Solana wallets. Extends `WalletManager` from `@tetherto/wdk-wallet`. | [Constructor](#constructor), [Methods](#methods) |
 | [WalletAccountSolana](#walletaccountsolana) | Individual Solana wallet account implementation. Extends `WalletAccountReadOnlySolana` and implements `IWalletAccount`. | [Constructor](#constructor-1), [Methods](#methods-1), [Properties](#properties) |
 | [WalletAccountReadOnlySolana](#walletaccountreadonlysolana) | Read-only Solana wallet account. | [Constructor](#constructor-2), [Methods](#methods-2) |
 
 ### WalletManagerSolana
 
 The main class for managing Solana wallets.  
-Extends `WalletManager` from `@wdk/wallet`.
+Extends `WalletManager` from `@tetherto/wdk-wallet`.
 
 #### Constructor
 
@@ -330,7 +330,7 @@ wallet.dispose()
 
 ### WalletAccountSolana
 
-Represents an individual Solana wallet account. Implements `IWalletAccount` from `@wdk/wallet`.
+Represents an individual Solana wallet account. Implements `IWalletAccount` from `@tetherto/wdk-wallet`.
 
 #### Constructor
 
