@@ -14,7 +14,7 @@
 
 'use strict'
 
-import WalletManager from '@wdk/wallet'
+import WalletManager from '@tetherto/wdk-wallet'
 
 import { createSolanaRpc } from '@solana/kit'
 
@@ -22,7 +22,7 @@ import WalletAccountSolana from './wallet-account-solana.js'
 
 /** @typedef {ReturnType<import('@solana/rpc').createSolanaRpc>} SolanaRpc */
 
-/** @typedef {import('@wdk/wallet').FeeRates} FeeRates */
+/** @typedef {import('@tetherto/wdk-wallet').FeeRates} FeeRates */
 
 /** @typedef {import('./wallet-account-solana.js').SolanaWalletConfig} SolanaWalletConfig */
 
