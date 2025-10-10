@@ -1,8 +1,13 @@
 {
-  "name": "@wdk/wallet-solana",
+  "name": "@tetherto/wdk-wallet-solana",
   "version": "1.0.0-beta.1",
   "description": "A simple package to manage BIP-32 wallets for the solana blockchain.",
-  "keywords": ["wdk", "wallet", "bip-32", "solana"],
+  "keywords": [
+    "wdk",
+    "wallet",
+    "bip-32",
+    "solana"
+  ],
   "author": "Tether",
   "license": "Apache-2.0",
   "repository": {
@@ -22,7 +27,7 @@
     "@solana/kit": "2.1.1",
     "@solana/spl-token": "0.1.8",
     "@solana/web3.js": "1.98.2",
-    "@wdk/wallet": "https://github.com/davi0kprogramsthings/wdk-wallet.git#develop",
+    "@tetherto/wdk-wallet": "^1.0.0-beta.1",
     "bare-node-runtime": "1.0.3",
     "bip39": "3.1.0",
     "micro-key-producer": "0.7.6",
@@ -42,6 +47,10 @@
     "./package": {
       "default": "./package.json"
     }
+  },
+  "publishConfig": {
+    "access": "restricted",
+    "registry": "https://registry.npmjs.org/"
   },
   "standard": {
     "ignore": [
