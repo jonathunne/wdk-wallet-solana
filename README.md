@@ -48,7 +48,7 @@ const seedPhrase = 'test only example nut use this real life secret phrase must 
 
 // Create wallet manager with Solana RPC provider
 const wallet = new WalletManagerSolana(seedPhrase, {
-  provider: 'https://api.mainnet-beta.solana.com', // or any Solana RPC endpoint
+  rpcUrl: 'https://api.mainnet-beta.solana.com', // or any Solana RPC endpoint
   commitment: 'confirmed' // Optional: commitment level
 })
 
@@ -116,7 +116,7 @@ import { WalletAccountReadOnlySolana } from '@tetherto/wdk-wallet-solana'
 
 // Create a read-only account
 const readOnlyAccount = new WalletAccountReadOnlySolana('publicKey', { // Base58-encoded public key
-  provider: 'https://api.mainnet-beta.solana.com',
+  rpcUrl: 'https://api.mainnet-beta.solana.com',
   commitment: 'confirmed'
 })
 
@@ -252,7 +252,7 @@ new WalletManagerSolana(seed, config)
 **Example:**
 ```javascript
 const wallet = new WalletManagerSolana(seedPhrase, {
-  provider: 'https://api.mainnet-beta.solana.com',
+  rpcUrl: 'https://api.mainnet-beta.solana.com',
   commitment: 'confirmed',
   transferMaxFee: 5000 // Maximum fee in lamports
 })

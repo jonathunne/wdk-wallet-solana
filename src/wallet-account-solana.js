@@ -365,5 +365,7 @@ export default class WalletAccountSolana extends WalletAccountReadOnlySolana {
     this._keyPair.secretKey = undefined
 
     this._signer = undefined
+
+    this._seed = undefined
   }
 }
