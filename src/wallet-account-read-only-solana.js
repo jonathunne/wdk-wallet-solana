@@ -271,7 +271,7 @@ export default class WalletAccountReadOnlySolana extends WalletAccountReadOnly {
    * @param {string} token - The SPL token mint address (base58-encoded public key).
    * @param {string} recipient - The recipient's wallet address (base58-encoded public key).
    * @param {number | bigint} amount - The amount to transfer in token's base units (must be ≤ 2^64-1).
-   * @returns {Promise<import('@solana/kit').TransactionMessage>} The constructed transaction message.
+   * @returns {Promise<import('@solana/transaction-messages').TransactionMessage>} The constructed transaction message.
    * @todo Support Token-2022 (Token Extensions Program).
    * @todo Support transfer with memo for tokens that require it.
    */
@@ -348,7 +348,7 @@ export default class WalletAccountReadOnlySolana extends WalletAccountReadOnly {
    * @private
    * @param {string} to - The recipient's address.
    * @param {number | bigint} value - The amount of SOL to send (in lamports).
-   * @returns {Promise<import('@solana/kit').TransactionMessage>} The constructed transaction message.
+   * @returns {Promise<import('@solana/transaction-messages').TransactionMessage>} The constructed transaction message.
    */
   async _buildNativeTransferTransactionMessage (to, value) {
     const addr = await this.getAddress()

@@ -1,5 +1,8 @@
-/** @implements {IWalletAccount} */
-export default class WalletAccountSolana extends WalletAccountReadOnlySolana implements IWalletAccount {
+/**
+ * Full-featured Solana wallet account implementation with signing capabilities.
+ *
+ */
+export default class WalletAccountSolana extends WalletAccountReadOnlySolana {
     /**
      * Creates a new solana wallet account.
      *
@@ -15,11 +18,27 @@ export default class WalletAccountSolana extends WalletAccountReadOnlySolana imp
     private _seed;
     /** @private */
     private _path;
-    /** @private */
+    /**
+     * The Ed25519 key pair signer for signing transactions.
+     *
+     * @private
+     * @type {import('@solana/keys').KeyPairSigner | undefined}
+     */
     private _signer;
-    /** @private */
+    /**
+     * Raw Ed25519 public key bytes (32 bytes).
+     *
+     * @private
+     * @type {Uint8Array | undefined}
+     */
     private _rawPublicKey;
-    _rawPrivateKey: any;
+    /**
+     * Raw Ed25519 private key bytes (32 bytes).
+     *
+     * @private
+     * @type {Uint8Array | undefined}
+     */
+    private _rawPrivateKey;
     /**
      * The derivation path's index of this account.
      *
@@ -36,7 +55,7 @@ export default class WalletAccountSolana extends WalletAccountReadOnlySolana imp
    * The account's key pair.
    *
    * Returns the raw key pair bytes in standard Solana format.
-   * - privateKey: 64-byte Ed25519 secret key (Uint8Array)
+   * - privateKey: 32-byte Ed25519 secret key (Uint8Array)
    * - publicKey: 32-byte Ed25519 public key (Uint8Array)
    *
    * @type {KeyPair}
@@ -61,7 +80,7 @@ export default class WalletAccountSolana extends WalletAccountReadOnlySolana imp
     /**
      * Sends a transaction. Accepts TransferNativeTransaction or TransactionMessage.
      *
-     * @param {SolanaTransaction} tx - The transaction.
+     * @param {SolanaTransaction} tx - The transaction (TransferNativeTransaction or TransactionMessage).
      * @returns {Promise<TransactionResult>} The transaction's result.
      */
     sendTransaction(tx: SolanaTransaction): Promise<TransactionResult>;

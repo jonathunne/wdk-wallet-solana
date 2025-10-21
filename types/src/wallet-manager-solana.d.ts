@@ -10,7 +10,7 @@ export default class WalletManagerSolana extends WalletManager {
      * A Solana RPC client for HTTP requests.
      *
      * @protected
-     * @type {import('@solana/kit').Rpc}
+     * @type {import('@solana/rpc').Rpc}
      */
     protected _rpc: any;
     /**
@@ -46,4 +46,4 @@ export type FeeRates = import("@tetherto/wdk-wallet").FeeRates;
 export type SolanaWalletConfig = import("./wallet-account-solana.js").SolanaWalletConfig;
 import WalletManager from '@tetherto/wdk-wallet';
 import WalletAccountSolana from './wallet-account-solana.js';
-import { createSolanaRpc } from '@solana/kit';
+import { createSolanaRpc } from '@solana/rpc';

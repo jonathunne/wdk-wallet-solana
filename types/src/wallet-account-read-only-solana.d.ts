@@ -1,7 +1,8 @@
 /** @typedef {import('@tetherto/wdk-wallet').TransactionResult} TransactionResult */
 /** @typedef {import('@tetherto/wdk-wallet').TransferOptions} TransferOptions */
 /** @typedef {import('@tetherto/wdk-wallet').TransferResult} TransferResult */
-/** @typedef {import('@solana/kit').TransactionMessage} TransactionMessage */
+/** @typedef {import('@solana/transaction-messages').TransactionMessage} TransactionMessage */
+/** @typedef {import('@solana/rpc').Rpc} SolanaRpc */
 /**
  * @typedef {Object} TransferNativeTransaction
  * @property {string} to - The transaction's recipient address.
@@ -11,14 +12,32 @@
  * for consistency across different blockchain implementations.
  */
 /**
- * Union type that accepts TransferNativeTransaction or TransactionMessage.
+ * @typedef {Object} TransferNativeTransaction
+ * @property {string} to - The recipient's Solana address.
+ * @property {number | bigint} value - The amount of SOL to send in lamports (1 SOL = 1,000,000,000 lamports).
+ *
+ * @description
+ * Note: This type is defined to match the interface from @tetherto/wdk-wallet.
+ * Simplified transaction format for native SOL transfers. This type provides a convenient
+ * interface for basic transfers without requiring knowledge of Solana's TransactionMessage structure.
+ */
+/**
  * @typedef {TransferNativeTransaction | TransactionMessage} SolanaTransaction
+ * @description
+ * Union type that accepts either:
+ * - TransferNativeTransaction: {to, value} object for native SOL transfers
+ * - TransactionMessage: Full Solana transaction message with instructions, fee payer, and lifetime
  */
 /**
  * @typedef {Object} SolanaWalletConfig
  * @property {string} [rpcUrl] - The provider's rpc url.
  * @property {string} [commitment] - The commitment level ('processed', 'confirmed', or 'finalized').
- * @property {number | bigint} [transferMaxFee] - The maximum fee amount for transfer operations.
+ * @property {number | bigint} [transferMaxFee] - Maximum allowed fee in lamports for transfer operations.
+ */
+/**
+ * Read-only Solana wallet account implementation.
+ *
+ * @extends WalletAccountReadOnly
  */
 export default class WalletAccountReadOnlySolana extends WalletAccountReadOnly {
     /**
@@ -36,14 +55,15 @@ export default class WalletAccountReadOnlySolana extends WalletAccountReadOnly {
      */
     protected _config: Omit<SolanaWalletConfig, "transferMaxFee">;
     /**
-     * A Solana RPC client for HTTP requests.
+     * Solana RPC client for making HTTP requests to the blockchain.
      *
      * @protected
-     * @type {import('@solana/kit').Rpc}
+     * @type {SolanaRpc}
      */
-    protected _rpc: any;
+    protected _rpc: SolanaRpc;
     /**
-     * The commitment level for transactions.
+     * The commitment level for querying transaction and account states.
+     * Determines the level of finality required before returning results.
      *
      * @protected
      * @type {string}
@@ -59,7 +79,7 @@ export default class WalletAccountReadOnlySolana extends WalletAccountReadOnly {
         fee: bigint;
     }>;
     /**
-     * Returns a transaction's receipt.
+     * Retrieves a transaction receipt by its signature
      *
      * @param {string} hash - The transaction's hash.
      * @returns {Promise<any>} — The receipt, or null if the transaction has not been included in a block yet.
@@ -73,7 +93,7 @@ export default class WalletAccountReadOnlySolana extends WalletAccountReadOnly {
      * @param {string} token - The SPL token mint address (base58-encoded public key).
      * @param {string} recipient - The recipient's wallet address (base58-encoded public key).
      * @param {number | bigint} amount - The amount to transfer in token's base units (must be ≤ 2^64-1).
-     * @returns {Promise<import('@solana/kit').TransactionMessage>} The constructed transaction message.
+     * @returns {Promise<import('@solana/transaction-messages').TransactionMessage>} The constructed transaction message.
      * @todo Support Token-2022 (Token Extensions Program).
      * @todo Support transfer with memo for tokens that require it.
      */
@@ -85,14 +105,21 @@ export default class WalletAccountReadOnlySolana extends WalletAccountReadOnly {
      * @private
      * @param {string} to - The recipient's address.
      * @param {number | bigint} value - The amount of SOL to send (in lamports).
-     * @returns {Promise<import('@solana/kit').TransactionMessage>} The constructed transaction message.
+     * @returns {Promise<import('@solana/transaction-messages').TransactionMessage>} The constructed transaction message.
      */
     private _buildNativeTransferTransactionMessage;
+    /**
+     * Calculates the fee for a given transaction message.
+     * @param {TransactionMessage} transactionMessage - The transaction message to calculate fee for.
+     * @returns {Promise<bigint>} The calculated transaction fee in lamports.
+     */
+    _getTransactionFee(transactionMessage: TransactionMessage): Promise<bigint>;
 }
 export type TransactionResult = import("@tetherto/wdk-wallet").TransactionResult;
 export type TransferOptions = import("@tetherto/wdk-wallet").TransferOptions;
 export type TransferResult = import("@tetherto/wdk-wallet").TransferResult;
-export type TransactionMessage = import("@solana/kit").TransactionMessage;
+export type TransactionMessage = import("@solana/transaction-messages").TransactionMessage;
+export type SolanaRpc = any;
 export type TransferNativeTransaction = {
     /**
      * - The transaction's recipient address.
@@ -105,9 +132,6 @@ export type TransferNativeTransaction = {
      */
     value: number | bigint;
 };
-/**
- * Union type that accepts TransferNativeTransaction or TransactionMessage.
- */
 export type SolanaTransaction = TransferNativeTransaction | TransactionMessage;
 export type SolanaWalletConfig = {
     /**
@@ -119,7 +143,7 @@ export type SolanaWalletConfig = {
      */
     commitment?: string;
     /**
-     * - The maximum fee amount for transfer operations.
+     * - Maximum allowed fee in lamports for transfer operations.
      */
     transferMaxFee?: number | bigint;
 };
