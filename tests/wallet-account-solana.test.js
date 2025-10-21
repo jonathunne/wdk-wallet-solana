@@ -15,7 +15,6 @@
 'use strict'
 
 import { describe, it, expect, beforeAll, jest, beforeEach, afterEach } from '@jest/globals'
-// import { Transaction, SystemProgram, PublicKey, Keypair, VersionedTransaction, TransactionMessage } from '@solana/web3.js'
 import WalletManagerSolana from '../src/wallet-manager-solana.js'
 import WalletAccountSolana from '../src/wallet-account-solana.js'
 import WalletAccountReadOnlySolana from '../src/wallet-account-read-only-solana.js'

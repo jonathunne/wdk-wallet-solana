@@ -15,7 +15,6 @@
 'use strict'
 
 import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals'
-import * as bip39 from 'bip39'
 import WalletManagerSolana from '../src/wallet-manager-solana.js'
 import WalletAccountSolana from '../src/wallet-account-solana.js'
 
