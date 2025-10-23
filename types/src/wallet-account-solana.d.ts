@@ -12,8 +12,11 @@ export default class WalletAccountSolana extends WalletAccountReadOnlySolana {
      * @returns {Promise<WalletAccountSolana>} The wallet account.
      */
     static at(seed: string | Uint8Array, path: string, config?: SolanaWalletConfig): Promise<WalletAccountSolana>;
-    /** @package */
-    constructor(seed: any, path: any, config?: {});
+    /**
+     * @private
+     * Use {@link WalletAccountSolana.at} instead.
+     */
+    private constructor();
     /** @private */
     private _seed;
     /** @private */

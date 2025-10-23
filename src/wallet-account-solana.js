@@ -49,7 +49,10 @@ const BIP_44_SOL_DERIVATION_PATH_PREFIX = "m/44'/501'"
  *
  */
 export default class WalletAccountSolana extends WalletAccountReadOnlySolana {
-  /** @package */
+  /**
+   * @private
+   * Use {@link WalletAccountSolana.at} instead.
+   */
   constructor (seed, path, config = {}) {
     if (typeof seed === 'string') {
       if (!bip39.validateMnemonic(seed)) {
