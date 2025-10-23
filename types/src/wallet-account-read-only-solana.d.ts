@@ -1,32 +1,3 @@
-/** @typedef {import('@tetherto/wdk-wallet').TransactionResult} TransactionResult */
-/** @typedef {import('@tetherto/wdk-wallet').TransferOptions} TransferOptions */
-/** @typedef {import('@tetherto/wdk-wallet').TransferResult} TransferResult */
-/** @typedef {import('@solana/transaction-messages').TransactionMessage} TransactionMessage */
-/** @typedef {ReturnType<typeof import('@solana/rpc').createSolanaRpc>} SolanaRpc */
-/** @typedef {ReturnType<import("@solana/rpc-api").SolanaRpcApi['getTransaction']>} SolanaTransactionReceipt */
-/**
- * @typedef {Object} SimpleSolanaTransaction
- * @property {string} to - The recipient's Solana address.
- * @property {number | bigint} value - The amount of SOL to send in lamports (1 SOL = 1,000,000,000 lamports).
- *
- * @description
- * Note: This type is defined to match the interface from @tetherto/wdk-wallet.
- * Simplified transaction format for native SOL transfers. This type provides a convenient
- * interface for basic transfers without requiring knowledge of Solana's TransactionMessage structure.
- */
-/**
- * @typedef {SimpleSolanaTransaction | TransactionMessage} SolanaTransaction
- * @description
- * Union type that accepts either:
- * - SimpleSolanaTransaction: {to, value} object for native SOL transfers
- * - TransactionMessage: Full Solana transaction message with instructions, fee payer, and lifetime
- */
-/**
- * @typedef {Object} SolanaWalletConfig
- * @property {string} [rpcUrl] - The provider's rpc url.
- * @property {'processed' | 'confirmed' | 'finalized'} [commitment] - The commitment level (default: 'confirmed').
- * @property {number | bigint} [transferMaxFee] - Maximum allowed fee in lamports for transfer operations.
- */
 /**
  * Read-only Solana wallet account implementation.
  *
