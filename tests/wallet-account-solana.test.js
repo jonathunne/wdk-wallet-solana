@@ -47,8 +47,8 @@ describe('WalletAccountSolana', () => {
   describe('Wallet Properties', () => {
     describe('seed', () => {
       it('should throw if invalid words in seed phrase', async () => {
-        await expect(
-          WalletAccountSolana.at(
+        expect(() => {
+          new WalletAccountSolana(
             'invalid word that does not exist test test test test test test test',
             "0'/0'/0'",
             {
@@ -56,11 +56,11 @@ describe('WalletAccountSolana', () => {
               commitment: 'processed'
             }
           )
-        ).rejects.toThrow('The seed phrase is invalid')
+        }).toThrow('The seed phrase is invalid')
       })
 
       it('should accept valid BIP-39 seed phrase as string', async () => {
-        const account = await WalletAccountSolana.at(
+        const account = new WalletAccountSolana(
           TEST_SEED_PHRASE,
           "0'/0'/0'",
           {
@@ -206,12 +206,11 @@ describe('WalletAccountSolana', () => {
         const tempAccount = await tempWallet.getAccount(99)
 
         const keyPairBefore = tempAccount.keyPair
-        expect(keyPairBefore.privateKey).not.toBeNull()
-        expect(keyPairBefore.privateKey).not.toBeUndefined()
+        expect(keyPairBefore.privateKey).toBeTruthy()
 
         tempAccount.dispose()
         const keyPairAfter = tempAccount.keyPair
-        expect(keyPairAfter.privateKey).toBeNull
+        expect(keyPairAfter.privateKey).toBeNull()
       })
 
       it('should dispose all accounts when wallet manager is disposed', async () => {
@@ -224,16 +223,17 @@ describe('WalletAccountSolana', () => {
         const account1 = await tempWallet.getAccount(1)
         const account2 = await tempWallet.getAccount(2)
 
-        expect(account0.keyPair.privateKey).not.toBeNull
-        expect(account1.keyPair.privateKey).not.toBeNull
-        expect(account2.keyPair.privateKey).not.toBeNull
+        expect(account0.keyPair.privateKey).toBeTruthy()
+        expect(account1.keyPair.privateKey).toBeTruthy()
+        expect(account2.keyPair.privateKey).toBeTruthy()
 
         tempWallet.dispose()
 
-        expect(account0.keyPair.privateKey).toBeNull
-        expect(account1.keyPair.privateKey).toBeNull
-        expect(account2.keyPair.privateKey).toBeNull
+        expect(account0.keyPair.privateKey).toBeNull()
+        expect(account1.keyPair.privateKey).toBeNull()
+        expect(account2.keyPair.privateKey).toBeNull()
       })
+
       it('should keep public key accessible after disposal', async () => {
         const tempWallet = new WalletManagerSolana(TEST_SEED_PHRASE, {
           provider: TEST_RPC_URL,

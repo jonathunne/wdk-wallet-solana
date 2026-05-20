@@ -381,7 +381,7 @@ describe('@tetherto/wdk-wallet-solana', () => {
     }
 
     for (const account of [account0, account1]) {
-      expect(account.keyPair.privateKey).toBe(undefined)
+      expect(account.keyPair.privateKey).toBeNull()
 
       await expect(account.sign(MESSAGE)).rejects.toThrow('The wallet account has been disposed.')
       await expect(account.sendTransaction(TRANSACTION)).rejects.toThrow('The wallet account has been disposed.')
